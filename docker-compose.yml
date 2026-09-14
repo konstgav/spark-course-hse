@@ -1,0 +1,318 @@
+name: iceberg-course
+
+# =============================================================================
+# Учебный стенд «Spark + Iceberg + ML»
+#
+#   postgres        базы airflow / metastore / dwh
+#   namenode        HDFS NameNode  — хранилище данных Iceberg-таблиц
+#   datanode        HDFS DataNode
+#   hive-metastore  каталог Iceberg-таблиц (thrift :9083, схема в postgres/metastore)
+#   spark-master    Spark Standalone master
+#   spark-worker-1  Spark worker (2 ядра / 2g)
+#   spark-worker-2  Spark worker (2 ядра / 2g)
+#   airflow-*       Airflow 2 (LocalExecutor) + клиент Spark для spark-submit
+#
+# JupyterLab в стек не входит: студенты запускают его на хост-машине, а PySpark
+# driver подключается к кластеру через опубликованные порты (см. README.md).
+# =============================================================================
+
+x-spark-common: &spark-common
+  build:
+    context: ./config/spark
+    args:
+      SPARK_VERSION: ${SPARK_VERSION}
+      PYTHON_VERSION: ${PYTHON_VERSION}
+  image: iceberg-course/spark:${SPARK_VERSION}
+  restart: on-failure
+  volumes:
+    - ./config/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
+    - ./jobs:/opt/jobs:ro
+    - ./data:/opt/data:ro
+  extra_hosts:
+    # Адрес хост-машины изнутри контейнера (для driver'а из JupyterLab на хосте
+    # под Docker Desktop). На Docker Desktop имя есть и так, строка — для Linux.
+    - "host.docker.internal:host-gateway"
+
+x-spark-worker-env: &spark-worker-env
+  SPARK_NO_DAEMONIZE: "1"
+  SPARK_WORKER_CORES: ${SPARK_WORKER_CORES}
+  SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY}
+  # периодически чистим каталоги завершённых приложений (jar'ы, логи executor'ов)
+  SPARK_WORKER_OPTS: >-
+    -Dspark.worker.cleanup.enabled=true
+    -Dspark.worker.cleanup.appDataTtl=86400
+
+x-airflow-common: &airflow-common
+  build:
+    context: ./config/airflow
+    args:
+      AIRFLOW_VERSION: ${AIRFLOW_VERSION}
+      PYTHON_VERSION: ${PYTHON_VERSION}
+      SPARK_VERSION: ${SPARK_VERSION}
+  image: iceberg-course/airflow:${AIRFLOW_VERSION}-spark${SPARK_VERSION}
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: Europe/Moscow
+    AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: Europe/Moscow
+    AIRFLOW__WEBSERVER__WORKERS: "2"
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
+    # Connections, доступные в DAG'ах без настройки через UI
+    AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type": "spark", "host": "spark://spark-master", "port": 7077}'
+    AIRFLOW_CONN_DWH_POSTGRES: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/dwh
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./jobs:/opt/jobs:ro
+    - ./data:/opt/data:ro
+    - ./config/spark/spark-defaults.conf:/opt/spark-conf/spark-defaults.conf:ro
+    - airflow_ivy:/home/airflow/.ivy2
+  user: "${AIRFLOW_UID}:0"
+  depends_on: &airflow-common-depends-on
+    postgres:
+      condition: service_healthy
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # POSTGRES
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15
+    container_name: course-postgres
+    restart: on-failure
+    # md5 вместо SCRAM: JDBC-драйвер внутри Hive Metastore 2.3.2 слишком старый
+    # для SCRAM ("authentication type 10 is not supported").
+    command: ["postgres", "-c", "password_encryption=md5"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES}
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./config/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ---------------------------------------------------------------------------
+  # HDFS: namenode + datanode (replication = 1)
+  # ---------------------------------------------------------------------------
+  namenode:
+    image: bde2020/hadoop-namenode:${HADOOP_TAG}
+    container_name: course-namenode
+    hostname: namenode
+    restart: on-failure
+    environment:
+      CLUSTER_NAME: iceberg-course
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: "1"
+      HDFS_CONF_dfs_permissions_enabled: "false"
+      HDFS_CONF_dfs_webhdfs_enabled: "true"
+      HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check: "false"
+    ports:
+      - "9870:9870"   # Web UI
+      - "9000:9000"   # RPC (fs.defaultFS)
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+      - ./data:/data:ro   # для `hdfs dfs -put /data/... /raw/...`
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9870 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  datanode:
+    image: bde2020/hadoop-datanode:${HADOOP_TAG}
+    container_name: course-datanode
+    # Datanode регистрируется в namenode под именем "datanode". Клиент на хосте
+    # (dfs.client.use.datanode.hostname=true) резолвит его в 127.0.0.1 через
+    # hosts-файл и попадает на опубликованный порт 9866.
+    hostname: datanode
+    restart: on-failure
+    depends_on:
+      namenode:
+        condition: service_healthy
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_datanode_hostname: datanode
+    ports:
+      - "9864:9864"   # Web UI
+      - "9866:9866"   # передача блоков данных (нужна driver'у на хосте)
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9864 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # ---------------------------------------------------------------------------
+  # HIVE METASTORE: каталог Iceberg (thrift :9083), схема в postgres/metastore
+  # ---------------------------------------------------------------------------
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: course-hive-metastore
+    hostname: hive-metastore
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 postgres:5432"
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://postgres:5432/metastore"
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionDriverName: "org.postgresql.Driver"
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionUserName: ${POSTGRES_USER}
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionPassword: ${POSTGRES_PASSWORD}
+      HIVE_SITE_CONF_hive_metastore_warehouse_dir: hdfs://namenode:9000/warehouse
+      HIVE_SITE_CONF_hive_metastore_schema_verification: "false"
+    # При первом запуске создаёт схему в БД metastore, затем стартует metastore
+    command: /opt/start-metastore.sh
+    volumes:
+      - ./config/hive/start-metastore.sh:/opt/start-metastore.sh:ro
+    ports:
+      - "9083:9083"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/9083' 2>/dev/null"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 20
+
+  # ---------------------------------------------------------------------------
+  # SPARK STANDALONE: master + 2 worker'а
+  # ---------------------------------------------------------------------------
+  spark-master:
+    <<: *spark-common
+    container_name: course-spark-master
+    hostname: spark-master
+    environment:
+      SPARK_NO_DAEMONIZE: "1"
+      SPARK_MASTER_HOST: spark-master
+      # Приложение без явного spark.cores.max получит не больше 2 ядер из 4,
+      # иначе первый открытый ноутбук забирает весь кластер и остальные ждут.
+      SPARK_MASTER_OPTS: "-Dspark.deploy.defaultCores=2"
+    command: /opt/spark/sbin/start-master.sh
+    ports:
+      - "7077:7077"   # RPC master'а — сюда подключается PySpark
+      - "8090:8080"   # Web UI master'а (8080 занят Airflow)
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/spark-master/7077' 2>/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  spark-worker-1:
+    <<: *spark-common
+    container_name: course-spark-worker-1
+    hostname: spark-worker-1
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    environment:
+      <<: *spark-worker-env
+    command: /opt/spark/sbin/start-worker.sh spark://spark-master:7077
+    ports:
+      - "8081:8081"   # Web UI worker-1
+
+  spark-worker-2:
+    <<: *spark-common
+    container_name: course-spark-worker-2
+    hostname: spark-worker-2
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    environment:
+      <<: *spark-worker-env
+    command: /opt/spark/sbin/start-worker.sh spark://spark-master:7077
+    ports:
+      - "8082:8081"   # Web UI worker-2
+
+  # ---------------------------------------------------------------------------
+  # AIRFLOW: init (миграции БД + admin) -> webserver, scheduler
+  # ---------------------------------------------------------------------------
+  airflow-init:
+    <<: *airflow-common
+    container_name: course-airflow-init
+    user: "0:0"
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /opt/airflow/logs
+        chown -R "${AIRFLOW_UID}:0" /opt/airflow/logs /home/airflow/.ivy2
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USER}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: course-airflow-webserver
+    restart: on-failure
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      start_period: 30s
+      retries: 10
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: course-airflow-scheduler
+    hostname: airflow-scheduler
+    restart: on-failure
+    command: scheduler
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8974/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      start_period: 30s
+      retries: 10
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+
+networks:
+  default:
+    # Фиксированная подсеть: на Linux driver из JupyterLab объявляет себя
+    # адресом шлюза 172.28.0.1 (см. host/spark_session.py). Если подсеть занята
+    # (ошибка "Pool overlaps") — поменяйте её здесь и SPARK_DRIVER_HOST на хосте.
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1
+
+volumes:
+  pg_data:
+  hadoop_namenode:
+  hadoop_datanode:
+  airflow_ivy:

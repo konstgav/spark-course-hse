@@ -1,0 +1,10 @@
+# Окружение для JupyterLab на хост-машине студента.
+# Требуется Python 3.11 и Java 17 (см. README.md, «Подготовка хост-машины»).
+pyspark==3.5.8
+jupyterlab
+numpy<2
+pandas<2.3
+pyarrow>=11,<19
+catboost==1.2.10
+scikit-learn
+psycopg2-binary

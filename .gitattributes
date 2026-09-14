@@ -1,0 +1,18 @@
+# Нормализация переводов строк: в репозитории всегда LF.
+* text=auto eol=lf
+
+# Shell-скрипты монтируются в Linux-контейнеры: CRLF после checkout на Windows
+# ломает их (`/bin/bash^M: bad interpreter`).
+*.sh   text eol=lf
+.env   text eol=lf
+
+# Скрипты Windows
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# Бинарные файлы
+*.png  binary
+*.jpg  binary
+*.parquet binary
+*.jar  binary

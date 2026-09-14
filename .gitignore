@@ -1,0 +1,53 @@
+# ---- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Виртуальные окружения
+.venv/
+venv/
+env/
+.conda/
+
+# ---- Jupyter ----------------------------------------------------------------
+.ipynb_checkpoints/
+
+# ---- Spark / CatBoost (артефакты driver'а в текущем каталоге) ---------------
+spark-warehouse/
+metastore_db/
+derby.log
+catboost_info/
+learn_error.tsv
+test_error.tsv
+time_left.tsv
+catboost_training.json
+tmp/
+
+# ---- Стенд ------------------------------------------------------------------
+# Логи Airflow и сырые данные: в репозитории только пустые каталоги
+logs/*
+!logs/.gitkeep
+data/*
+!data/.gitkeep
+
+# Локальные переопределения переменных (.env с дефолтами курса хранится в git)
+.env.local
+docker-compose.override.yml
+
+# ---- IDE / ОС ---------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
