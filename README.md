@@ -22,8 +22,8 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 ```
 
 * **Данные** Iceberg-таблиц лежат в HDFS (`hdfs://namenode:9000/warehouse`).
-* **Каталог** (какие таблицы есть и где их текущий snapshot) хранится в Hive Metastore,
-  служебная БД которого находится в Postgres (`metastore`).
+* **Каталог** (какие таблицы есть и где их текущий snapshot) — в Hive Metastore, его
+  служебная БД в Postgres (`metastore`).
 * **Вычисления** выполняет Spark. Каталог `iceberg` = `SparkCatalog` с `type=hive`.
 
 ## Состав и порты
@@ -45,13 +45,13 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 
 ## Требования
 
-* Docker Engine 24+ с Compose v2 (Linux) или Docker Desktop (Mac/Windows).
-  Нужно **не меньше 8 GB RAM и 4 CPU** для Docker: сам стенд в простое занимает около 3 GB,
-  каждый executor добавляет примерно 1.4 GB. Под образы понадобится около 10 GB на диске.
-* Должны быть свободны порты 4040, 5432, 7077–7079, 8080–8082, 8090, 9000, 9083,
-  9864, 9866, 9870.
-* На Apple Silicon образы `bde2020/*` (HDFS, Hive) работают через эмуляцию amd64.
-  Это медленнее, но работает.
+* Docker Engine 24+ с Compose v2 (Linux) или Docker Desktop (Mac/Windows):
+  **не меньше 8 GB RAM, 4 CPU и 10 GB на диске**. Стенд в простое занимает около 3 GB,
+  каждый executor добавляет примерно 1.4 GB.
+* Свободные порты: 4040, 5432, 7077–7079, 8080–8082, 8090, 9000, 9083, 9864, 9866, 9870.
+* На Apple Silicon образы `bde2020/*` (HDFS, Hive) работают через эмуляцию amd64 —
+  медленнее, но работают.
+* Windows: если на диске `C:` мало места, см. [Решение проблем](#решение-проблем).
 
 ## 1. Запуск стенда
 
@@ -61,24 +61,15 @@ cd iceberg-course-infra
 sed -i "s/^AIRFLOW_UID=.*/AIRFLOW_UID=$(id -u)/" .env
 
 docker compose up -d --build
-```
-
-Первый запуск занимает 5–15 минут: скачиваются базовые образы, собираются образы
-`iceberg-course/spark` и `iceberg-course/airflow`. Статус смотрите так:
-
-```bash
 docker compose ps -a
 ```
 
-Ожидаемое состояние: все сервисы `Up`, у сервисов с healthcheck `(healthy)`, а
-`airflow-init` в статусе `Exited (0)` (это одноразовая инициализация). Сервисы стартуют
-в порядке зависимостей: postgres → namenode → datanode → hive-metastore; параллельно
-spark-master → worker'ы и airflow-init → webserver/scheduler.
+Первый запуск занимает 5–15 минут: скачиваются базовые образы, собираются
+`iceberg-course/spark` и `iceberg-course/airflow`. Ожидаемое состояние: все сервисы `Up`,
+у сервисов с healthcheck — `(healthy)`, `airflow-init` — `Exited (0)` (одноразовая
+инициализация).
 
-При первом старте metastore создаёт схему в БД `metastore`, это видно в логе:
-`docker compose logs hive-metastore | grep -i schema`.
-
-## 2. Проверка кластера (без хоста)
+Проверка кластера изнутри Docker:
 
 ```bash
 # HDFS: 1 live datanode
@@ -87,128 +78,103 @@ docker compose exec namenode hdfs dfsadmin -report | grep -E "Live datanodes|DFS
 # Spark: 2 ALIVE worker'а, 4 ядра
 curl -s localhost:8090/json/ | python3 -c 'import json,sys; d=json.load(sys.stdin); print("workers:", d["aliveworkers"], "cores:", d["cores"])'
 
-# Hive Metastore слушает порт
-docker compose exec hive-metastore bash -c '</dev/tcp/localhost/9083' && echo metastore OK
-
-# Postgres: базы airflow, metastore, dwh
-docker compose exec postgres psql -U course -d postgres -c '\l' | grep -E 'airflow|metastore|dwh'
-
-# Spark + Iceberg + CatBoost из контейнера (driver внутри docker-сети)
-docker compose exec spark-master spark-submit /opt/jobs/catboost_smoke_job.py
+# Spark + Iceberg + CatBoost (driver внутри docker-сети)
 docker compose exec spark-master spark-submit /opt/jobs/iceberg_smoke_job.py
+docker compose exec spark-master spark-submit /opt/jobs/catboost_smoke_job.py
 ```
 
-**Airflow → Spark → Iceberg:** откройте http://localhost:8080, включите DAG
-`spark_iceberg_smoke` и нажмите *Trigger DAG*. То же из консоли:
+**Airflow → Spark → Iceberg:** на http://localhost:8080 включите DAG `spark_iceberg_smoke`
+и нажмите *Trigger DAG*. То же из консоли:
+`docker compose exec airflow-scheduler airflow dags test spark_iceberg_smoke`.
+Задача должна завершиться `success`, в логе появится таблица `iceberg.demo.airflow_runs`.
 
-```bash
-docker compose exec airflow-scheduler airflow dags test spark_iceberg_smoke
-```
+> Первый запуск Spark-приложения 1–2 минуты скачивает jar'ы Iceberg, CatBoost и JDBC из
+> Maven Central, дальше они берутся из кеша `~/.ivy2`.
 
-Задача должна завершиться `success`, а в логе появится таблица `iceberg.demo.airflow_runs`.
+## 2. Подготовка хост-машины студента
 
-> Первый запуск Spark-приложения скачивает jar'ы Iceberg, CatBoost и JDBC из Maven
-> Central, это занимает 1–2 минуты. Потом они берутся из кеша `~/.ivy2`.
+### 2.1. hosts-файл (обязательно)
 
-## 3. Подготовка хост-машины студента
-
-### 3.1. hosts-файл (обязательно)
-
-Пути к таблицам сохраняются в metastore с именами `namenode` и `datanode`, а JDBC-адрес
-витрин использует имя `postgres`. Эти имена должны одинаково резолвиться и в контейнерах,
-и на хосте. Добавьте строку:
-
-```
-127.0.0.1 namenode datanode hive-metastore postgres
-```
+Имена `namenode`, `datanode` и `postgres` сохраняются в metastore и в JDBC-адресах, поэтому
+должны резолвиться одинаково и в контейнерах, и на хосте:
 
 * Linux / macOS: `sudo sh -c 'echo "127.0.0.1 namenode datanode hive-metastore postgres" >> /etc/hosts'`
-* Windows: откройте Блокнот от имени администратора и добавьте строку в
-  `C:\Windows\System32\drivers\etc\hosts`.
+* Windows: та же строка в `C:\Windows\System32\drivers\etc\hosts` (Блокнот от имени
+  администратора).
 
-### 3.2. Python 3.11 + Java 17 + pyspark 3.5.8
+### 2.2. Python 3.11 + Java 17 + pyspark 3.5.8
 
-Версии должны совпадать с кластером. PySpark 3.5 не поддерживает Python 3.12+ и Java 21,
-а при другой minor-версии Python любые Python UDF падают с ошибкой
-`Python in worker has different version`. Поэтому всё ставится в отдельное conda-окружение
-`spark-course`, и системный Python с Java можно не трогать.
+Версии должны совпадать с кластером: PySpark 3.5 не поддерживает Python 3.12+ и Java 21, а
+при другой minor-версии Python падают любые Python UDF. Поэтому всё ставится в отдельное
+conda-окружение `spark-course`, системный Python и Java можно не трогать.
 
-#### Вариант А: скрипт (Miniconda + окружение)
-
-Скрипт скачивает Miniconda (если conda ещё не установлена), ставит её в домашний каталог
-без прав администратора, создаёт окружение `spark-course` с Python 3.11 и Java 17 из
-`conda-forge` и устанавливает пакеты из [host/requirements.txt](host/requirements.txt).
-Если что-то уже установлено, этот шаг пропускается, поэтому скрипт можно запускать повторно.
-
-* Linux / macOS ([host/install_miniconda.sh](host/install_miniconda.sh)):
-  ```bash
-  bash host/install_miniconda.sh
-  ```
-* Windows ([host/install_miniconda.ps1](host/install_miniconda.ps1)), в PowerShell из
-  каталога `iceberg-course-infra`:
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File host\install_miniconda.ps1
-  ```
-
-Каталог установки по умолчанию `~/miniconda3` (`%USERPROFILE%\miniconda3` на Windows). Его
-можно изменить: `MINICONDA_PREFIX=/opt/miniconda3 bash host/install_miniconda.sh` или
-`... -File host\install_miniconda.ps1 -Prefix D:\miniconda3`. На Windows путь не должен
-содержать пробелов.
-
-После установки **откройте новый терминал**, чтобы в нём появилась команда `conda`, и
-запустите JupyterLab:
+Скрипт ставит Miniconda (если conda ещё нет), создаёт окружение и устанавливает
+[host/requirements.txt](host/requirements.txt). Повторный запуск безопасен — готовые шаги
+пропускаются:
 
 ```bash
-conda activate spark-course
-jupyter lab
+bash host/install_miniconda.sh                                        # Linux / macOS
+powershell -ExecutionPolicy Bypass -File host\install_miniconda.ps1   # Windows
 ```
 
-На Windows, если PowerShell пишет *«выполнение сценариев отключено в этой системе»*, один
-раз выполните `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` или используйте
-*Anaconda Prompt* из меню «Пуск».
+Каталог установки по умолчанию `~/miniconda3` (`%USERPROFILE%\miniconda3`); меняется через
+`MINICONDA_PREFIX=/opt/miniconda3` или `-Prefix D:\miniconda3`. Путь — без пробелов и
+кириллицы.
 
-#### Вариант Б: вручную
+То же вручную:
 
-1. Установите Miniconda (если conda ещё нет):
-   * **Linux** (для ARM замените `x86_64` на `aarch64`):
-     ```bash
-     curl -fsSLo miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-     bash miniconda.sh -b -p ~/miniconda3 && rm miniconda.sh
-     ~/miniconda3/bin/conda init "$(basename "$SHELL")"
-     ```
-   * **macOS**: то же самое с установщиком `Miniconda3-latest-MacOSX-arm64.sh`
-     (Apple Silicon) или `Miniconda3-latest-MacOSX-x86_64.sh` (Intel).
-   * **Windows**: скачайте и запустите
-     [Miniconda3-latest-Windows-x86_64.exe](https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe).
-     Выберите *Just Me*, путь без пробелов и кириллицы. Дальнейшие команды выполняйте в
-     *Anaconda Prompt*.
+```bash
+conda create -n spark-course --override-channels -c conda-forge python=3.11 openjdk=17
+conda activate spark-course
+pip install -r host/requirements.txt
+```
 
-   Затем откройте новый терминал и проверьте: `conda --version`.
+`--override-channels` берёт пакеты только из `conda-forge`: без него свежая Miniconda
+требует принять условия канала `defaults` (`CondaToSNonInteractiveError`). Java pyspark
+находит сам, `JAVA_HOME` задавать не нужно. Проверка: `python --version` → `3.11.x`,
+`java -version` → `17.x`.
 
-2. Создайте окружение и запустите JupyterLab (из каталога `iceberg-course-infra`):
-   ```bash
-   conda create -n spark-course --override-channels -c conda-forge python=3.11 openjdk=17
-   conda activate spark-course
-   pip install -r host/requirements.txt
-   jupyter lab
-   ```
-   Флаг `--override-channels` берёт пакеты только из `conda-forge`. Без него свежая
-   Miniconda может потребовать принять условия использования канала `defaults`
-   (`CondaToSNonInteractiveError`).
+После установки **откройте новый терминал**, чтобы появилась команда `conda`. Если
+PowerShell пишет *«выполнение сценариев отключено в этой системе»* — один раз выполните
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` или используйте *Anaconda Prompt*.
 
-Java из conda-окружения pyspark находит сам, отдельно `JAVA_HOME` задавать не нужно.
-Проверка: `python --version` покажет `3.11.x`, а `java -version` — `17.x`.
+### 2.3. Windows: winutils
 
-### 3.3. Linux: файрвол
+Hadoop под Windows требует `winutils.exe` и `hadoop.dll`; в pyspark они не входят, на Linux
+и macOS не нужны. Без них сессия падает на `Did not find winutils.exe ... HADOOP_HOME and
+hadoop.home.dir are unset`. Скрипт скачивает обе утилиты и прописывает `HADOOP_HOME` и
+`PATH` в переменные среды пользователя — прав администратора не требует:
 
-Executor'ы подключаются к driver'у на хосте из подсети `172.28.0.0/24`. Если включён
-`ufw`, откройте её, иначе задачи будут висеть без ошибок:
+```powershell
+powershell -ExecutionPolicy Bypass -File host\install_winutils.ps1
+```
+
+По умолчанию ставит в `%USERPROFILE%\hadoop`, на другой диск — `-Prefix D:\hadoop`. После
+установки **откройте новый терминал**.
+
+### 2.4. Linux: файрвол
+
+Executor'ы подключаются к driver'у на хосте из подсети `172.28.0.0/24`. Если включён `ufw`,
+откройте её, иначе задачи будут висеть без ошибок:
 
 ```bash
 sudo ufw allow from 172.28.0.0/24
 ```
 
-## 4. Подключение из JupyterLab
+### 2.5. Проверка с хоста (smoke test)
+
+```bash
+conda activate spark-course
+cd host && python smoke_test.py
+```
+
+Скрипт проверяет по порядку: hosts-файл, запись и чтение Iceberg-таблицы в HDFS,
+распределение задач по `spark-worker-1` и `spark-worker-2`, Python UDF, `toPandas()`,
+запись в `dwh.public.hello` по JDBC, обучение CatBoost (на Linux). В конце выводится
+`OK: стенд работает`. Файлы таблицы видны в http://localhost:9870 →
+*Utilities → Browse the file system* → `/warehouse/demo.db/hello`.
+
+## 3. Подключение из JupyterLab
 
 ```python
 import sys
@@ -222,80 +188,44 @@ spark.sql("CREATE TABLE IF NOT EXISTS iceberg.demo.t (id BIGINT, name STRING) US
 spark.sql("INSERT INTO iceberg.demo.t VALUES (1, 'a')")
 spark.table("iceberg.demo.t").show()
 
-# ... в конце работы обязательно освободить ресурсы кластера
-spark.stop()
+spark.stop()                         # обязательно: освобождает ресурсы кластера
 ```
 
-Функция `get_spark()` из [host/spark_session.py](host/spark_session.py) задаёт все нужные
-параметры: master, адрес driver'а, jar-пакеты, каталог `iceberg`, HDFS и ресурсы.
-Дополнительные параметры можно передать аргументами:
-`get_spark("etl", spark__sql__shuffle__partitions="16")`.
+`get_spark()` из [host/spark_session.py](host/spark_session.py) задаёт master, адрес
+driver'а, jar-пакеты, каталог `iceberg`, HDFS и ресурсы. Дополнительные параметры
+передаются аргументами: `get_spark("etl", spark__sql__shuffle__partitions="16")`.
 
 Что важно знать:
 
-* **Адрес driver'а.** Executor'ы открывают соединения к driver'у на хосте.
-  `get_spark()` выбирает адрес сам: на Linux с Docker Engine это шлюз `172.28.0.1`,
-  на Docker Desktop (Mac/Windows/WSL2) — `host.docker.internal`. Переопределить можно
-  переменной окружения `SPARK_DRIVER_HOST`.
 * **Одно приложение занимает 2 ядра из 4.** Два открытых ноутбука (или ноутбук и DAG)
-  работают одновременно, третий будет ждать ресурсов. Неиспользуемые сессии закрывайте
-  через `spark.stop()`.
-* **Запись в Postgres** выполняют executor'ы, поэтому в JDBC URL указывайте имя
-  `postgres`, а не `localhost`: `jdbc:postgresql://postgres:5432/dwh`.
-* **Сырые файлы** читаются executor'ами, поэтому их нужно загрузить в HDFS. Положите файл
-  в `./data` и выполните:
+  работают одновременно, третий ждёт ресурсов. Неиспользуемые сессии закрывайте
+  через `spark.stop()`, занятость видна на http://localhost:8090.
+* **Запись в Postgres** выполняют executor'ы, поэтому в JDBC URL указывайте имя `postgres`,
+  а не `localhost`: `jdbc:postgresql://postgres:5432/dwh`.
+* **Сырые файлы** читают executor'ы, поэтому их нужно загрузить в HDFS: положите файл
+  в `./data` и выполните
   ```bash
   docker compose exec namenode hdfs dfs -mkdir -p /raw
   docker compose exec namenode hdfs dfs -put -f /data/file.csv /raw/
   ```
-  После этого читайте его как `spark.read.csv("hdfs://namenode:9000/raw/file.csv", header=True)`.
-  Каталог `./data` также смонтирован в Spark и Airflow как `/opt/data` для джоб,
-  запущенных внутри кластера.
-* **CatBoost на Spark** (`import catboost_spark`) из ноутбука на хосте работает **только на
-  Linux с Docker Engine**. Процесс master CatBoost на driver'е сам подключается к
-  executor'ам по IP контейнеров, а на Docker Desktop эти адреса с хоста недоступны. На
-  Mac/Windows запускайте обучение внутри кластера: положите скрипт в `./jobs` и выполните
-  `docker compose exec spark-master spark-submit /opt/jobs/<script>.py` (или используйте
-  Airflow). Пример — [jobs/catboost_smoke_job.py](jobs/catboost_smoke_job.py).
-  Служебные файлы обучения (`learn_error.tsv`, `catboost_training.json`, `tmp/` и т.п.)
-  CatBoost пишет в текущий каталог driver'а.
+  затем читайте как `spark.read.csv("hdfs://namenode:9000/raw/file.csv", header=True)`.
+  Каталог `./data` смонтирован в Spark и Airflow как `/opt/data`.
+* **Адрес driver'а** `get_spark()` выбирает сам: шлюз `172.28.0.1` на Linux с Docker Engine,
+  `host.docker.internal` на Docker Desktop. Переопределяется `SPARK_DRIVER_HOST`.
+* **CatBoost на Spark** (`import catboost_spark`) с хоста работает **только на Linux с
+  Docker Engine**: master CatBoost подключается к executor'ам по IP контейнеров, а с Docker
+  Desktop эти адреса недоступны. На Mac/Windows обучайте внутри кластера — положите скрипт
+  в `./jobs` и запустите `docker compose exec spark-master spark-submit /opt/jobs/<script>.py`
+  или через Airflow. Пример — [jobs/catboost_smoke_job.py](jobs/catboost_smoke_job.py).
 
-### Проверка с хоста (smoke test)
+## 4. Airflow
 
-```bash
-conda activate spark-course
-cd host && python smoke_test.py
-```
-
-Скрипт проверяет по порядку: hosts-файл, запись и чтение Iceberg-таблицы в HDFS,
-распределение задач по `spark-worker-1` и `spark-worker-2`, Python UDF, `toPandas()`,
-запись в `dwh.public.hello` по JDBC, обучение CatBoost (на Linux). В конце выводится
-`OK: стенд работает`. Файлы таблицы можно посмотреть в http://localhost:9870 →
-*Utilities → Browse the file system* → `/warehouse/demo.db/hello`.
-
-## 5. Airflow
-
-* DAG'и кладите в `./dags`, PySpark-скрипты для них — в `./jobs` (внутри контейнера это
-  `/opt/jobs`).
-* Уже настроены connections:
-  * `spark_default` → `spark://spark-master:7077`, для `SparkSubmitOperator`;
-  * `dwh_postgres` → база `dwh`.
-* Параметры `spark-submit` из Airflow (jar-пакеты, каталог `iceberg`, ресурсы) берутся из
+* DAG'и кладите в `./dags`, PySpark-скрипты для них — в `./jobs` (в контейнере `/opt/jobs`).
+* Готовые connections: `spark_default` → `spark://spark-master:7077` (для
+  `SparkSubmitOperator`) и `dwh_postgres` → база `dwh`.
+* Параметры `spark-submit` из Airflow берутся из
   [config/spark/spark-defaults.conf](config/spark/spark-defaults.conf).
 * Новые DAG'и создаются на паузе и появляются в UI в течение ~30 секунд.
-
-## Типичные проблемы
-
-| Симптом | Причина / решение |
-|---|---|
-| `UnknownHostException: namenode` / `datanode`, или запись в HDFS висит | нет строки в hosts-файле (п. 3.1) |
-| Задачи висят в `(0 + 2) / N`, в UI master'а приложение `WAITING` | кластер занят другими сессиями: закройте лишние (`spark.stop()`), см. http://localhost:8090 |
-| Задачи висят, executor'ы в логах воркера не могут подключиться к driver'у | Linux: `ufw` (п. 3.3); Docker Desktop: проверьте `SPARK_DRIVER_HOST` |
-| `Python in worker has different version` | на хосте не Python 3.11 |
-| `JAVA_GATEWAY_EXITED` / ошибки `sun.nio` при старте сессии | на хосте нет Java 17 или используется Java 21 |
-| `Pool overlaps with other one on this address space` при `up` | подсеть `172.28.0.0/24` занята: поменяйте её в `docker-compose.yml` и задайте `SPARK_DRIVER_HOST` |
-| Порт уже занят | остановите конфликтующий сервис или поменяйте левую часть `ports:` |
-| hive-metastore перезапускается | `docker compose logs hive-metastore`; обычно помогает полный сброс (ниже) |
 
 ## Остановка и сброс
 
@@ -303,6 +233,65 @@ cd host && python smoke_test.py
 docker compose stop                         # остановить, контейнеры и данные сохраняются
 docker compose down                         # удалить контейнеры, данные (volume'ы) сохраняются
 docker compose down -v --remove-orphans     # полный сброс: HDFS, Postgres, кеш Ivy Airflow
+```
+
+## Решение проблем
+
+| Симптом | Причина / решение |
+|---|---|
+| `UnknownHostException: namenode` / `datanode`, запись в HDFS висит | нет строки в hosts-файле (п. 2.1) |
+| `Python in worker has different version` | на хосте не Python 3.11 (п. 2.2) |
+| `JAVA_GATEWAY_EXITED`, ошибки `sun.nio` при старте сессии | нет Java 17 или используется Java 21 (п. 2.2) |
+| `Did not find winutils.exe`, `UnsatisfiedLinkError: NativeIO$Windows.access0` | Windows: не установлен winutils (п. 2.3) |
+| Задачи висят, executor'ы не могут подключиться к driver'у | Linux: `ufw` (п. 2.4); Docker Desktop: проверьте `SPARK_DRIVER_HOST` |
+| Задачи висят в `(0 + 2) / N`, приложение `WAITING` в UI master'а | кластер занят другими сессиями: закройте лишние, см. http://localhost:8090 |
+| `Pool overlaps with other one on this address space` при `up` | подсеть `172.28.0.0/24` занята: поменяйте её в `docker-compose.yml` и задайте `SPARK_DRIVER_HOST` |
+| Порт уже занят | остановите конфликтующий сервис или поменяйте левую часть `ports:` |
+| hive-metastore перезапускается | `docker compose logs hive-metastore`; обычно помогает полный сброс (выше) |
+| `failed to compute cache key: failed to send write: ... desktop-containerd` при `up --build` | кончилось место в виртуальном диске Docker Desktop (ниже) |
+| `Error 28 No space left on device` при `pip install` | кончилось место на диске с conda-окружением (ниже) |
+
+### Windows: нет места на диске `C:`
+
+Docker Desktop и conda по умолчанию держат всё на `C:`: виртуальный диск с образами
+(`%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx`, около 10 ГБ) и окружение с кэшами
+(ещё 8–10 ГБ). И то, и другое переносится без прав администратора.
+
+**Docker:** Settings → Resources → Advanced → **Disk image location** → укажите
+`D:\DockerData` → Apply & restart (Docker предложит перенести существующие данные). Быстро
+освободить место, ничего не перенося: `docker builder prune -a -f` и
+`docker image prune -a -f`. Файл VHDX после удаления данных сам не уменьшается — сожмите
+его: `wsl --shutdown`, затем `wsl --manage docker-desktop-data --set-sparse true`.
+
+> ⚠️ Не используйте `docker system prune --volumes` и `docker compose down -v`: они удалят
+> volume'ы `iceberg-course_pg_data` и `iceberg-course_hadoop_*`, то есть базы
+> Airflow/metastore и все Iceberg-таблицы.
+
+**Conda:** переносить нужно и окружение, и кэш пакетов, и `%TEMP%` (туда pip распаковывает
+колёса, один `pyspark` — больше 300 МБ), иначе `Error 28` повторится:
+
+```powershell
+conda env remove -n spark-course; conda clean --all --yes; pip cache purge
+New-Item -ItemType Directory -Force D:\conda\envs, D:\conda\pkgs, D:\conda\tmp, D:\pip-cache
+conda config --add envs_dirs D:\conda\envs   # новые окружения -> D:
+conda config --add pkgs_dirs D:\conda\pkgs   # кэш пакетов -> тот же диск, иначе hardlink
+                                             # между томами не работает и объём удваивается
+setx PIP_CACHE_DIR D:\pip-cache
+setx TMP D:\conda\tmp
+setx TEMP D:\conda\tmp
+```
+
+Откройте новый терминал (`setx` действует только на новые процессы) и создайте окружение
+заново (п. 2.2). Активация по имени `conda activate spark-course` продолжает работать.
+
+### Windows: «Невозможно запустить Windchill ProductionPoint Client Manager (порт 8989)»
+
+Окно появляется после установки Docker Desktop; к стенду отношения не имеет — порт 8989
+занят другим или зависшим экземпляром Client Manager. Смените порт и перезапустите его
+из нового терминала:
+
+```powershell
+setx WPP_CLIENT_MSG_PORT 8990
 ```
 
 ## Структура
@@ -321,6 +310,7 @@ iceberg-course-infra/
 │   ├── requirements.txt
 │   ├── install_miniconda.sh      # Miniconda + окружение spark-course (Linux / macOS)
 │   ├── install_miniconda.ps1     # то же для Windows
+│   ├── install_winutils.ps1      # winutils.exe + hadoop.dll + HADOOP_HOME (только Windows)
 │   ├── spark_session.py          # get_spark(): SparkSession к кластеру в Docker
 │   └── smoke_test.py             # проверка стенда с хоста
 ├── dags/spark_iceberg_smoke.py   # проверочный DAG
