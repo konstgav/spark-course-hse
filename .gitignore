@@ -67,8 +67,20 @@ data/*
 .env.local
 docker-compose.override.yml
 
+# ---- Слайды -----------------------------------------------------------------
+# В git только исходники: slides/**/slides.md, тема и картинки в img/.
+# Всё собранное (HTML, PDF, PPTX, PNG по слайдам) складывается в slides/build/
+slides/build/
+slides/**/*.html
+slides/**/*.pdf
+slides/**/*.pptx
+
 # ---- IDE / ОС ---------------------------------------------------------------
-.vscode/
+# Настройки Marp и рекомендация расширения нужны всем, кто открывает репозиторий,
+# поэтому два файла из .vscode/ хранятся в git, а личные настройки — нет.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 .DS_Store

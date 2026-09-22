@@ -1,0 +1,15 @@
+{
+  // Тема слайдов курса: делает доступным `theme: course` в slides/**/slides.md
+  "markdown.marp.themes": [
+    "./slides/theme/course.css"
+  ],
+  // Экспорт в HTML одним самодостаточным файлом
+  "markdown.marp.html": "default",
+  "markdown.marp.exportType": "html",
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.rulers": [
+      95
+    ]
+  }
+}

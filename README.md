@@ -46,14 +46,138 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 ## Требования
 
 * Docker Engine 24+ с Compose v2 (Linux) или Docker Desktop (Mac/Windows):
-  **не меньше 8 GB RAM, 4 CPU и 10 GB на диске**. Стенд в простое занимает около 3 GB,
+  **не меньше 8 GB RAM, 4 CPU и 20 GB на диске** (образы Docker ~10 GB, окружение conda
+  с кэшами ещё 8–10 GB). Стенд в простое занимает около 3 GB,
   каждый executor добавляет примерно 1.4 GB.
 * Свободные порты: 4040, 5433, 7077–7079, 8080–8082, 8090, 9000, 9083, 9864, 9866, 9870.
 * На Apple Silicon образы `bde2020/*` (HDFS, Hive) работают через эмуляцию amd64 —
   медленнее, но работают.
-* Windows: если на диске `C:` мало места, см. [Решение проблем](#решение-проблем).
+* Windows: Docker и conda по умолчанию занимают ~20 ГБ на `C:` — перенесите их на `D:`
+  **до** первого запуска стенда, см. п. 1.1.
 
-## 1. Запуск стенда
+## 1. Подготовка хост-машины студента
+
+Порядок шагов важен: место на диске освобождается **до** того, как Docker начнёт качать
+образы, а переменные среды выставляются **до** установки окружения — `setx` действует
+только на процессы, запущенные после него. Прав администратора не требует ни один шаг,
+кроме правки hosts-файла.
+
+| # | Шаг | Windows | Linux / macOS |
+|---|---|---|---|
+| 1.1 | перенос Docker, TEMP и conda на диск `D:` | обязательно | — |
+| 1.2 | hosts-файл | обязательно | обязательно |
+| 1.3 | winutils | обязательно | — |
+| 1.4 | файрвол `ufw` | — | если включён |
+| 1.5 | Python 3.11 + Java 17 + pyspark 3.5.8 | обязательно | обязательно |
+
+### 1.1. Windows: перенос Docker, TEMP и conda на диск `D:`
+
+Стенд занимает на диске около 20 ГБ: виртуальный диск Docker Desktop с образами
+(`%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx`, примерно 10 ГБ) и conda-окружение
+с кэшами пакетов (ещё 8–10 ГБ). По умолчанию всё это ложится на `C:`. Сделайте перенос
+**до первого запуска стенда**: перекладывать уже скачанные образы и созданное окружение
+дольше, чем сразу указать `D:`.
+
+**Docker.** Settings → Resources → Advanced → **Disk image location** → укажите
+`D:\DockerData` → Apply & restart. Если образы уже скачаны, Docker предложит перенести
+их — согласитесь.
+
+**Папка TEMP** для всех программ пользователя. Туда же pip распаковывает колёса: один
+`pyspark` — больше 300 МБ, и на `C:` это регулярно даёт `Error 28 No space left on device`.
+
+```powershell
+New-Item -ItemType Directory -Force D:\temp, D:\pip-cache
+setx TEMP D:\temp
+setx TMP  D:\temp
+setx PIP_CACHE_DIR D:\pip-cache
+```
+
+**Conda.** Отдельно настраивать `envs_dirs` и `pkgs_dirs` не нужно: если поставить саму
+Miniconda на `D:` (п. 1.5, ключ `-Prefix D:\miniconda3`), окружения и кэш пакетов лягут
+рядом с ней. Если Miniconda **уже** установлена на `C:` и переставлять её не хочется —
+см. [Решение проблем](#windows-место-на-диске-c-уже-кончилось).
+
+После `setx` **откройте новый терминал** — иначе следующие шаги не увидят новые пути.
+
+### 1.2. hosts-файл (обязательно)
+
+Имена `namenode`, `datanode` и `postgres` сохраняются в metastore и в JDBC-адресах, поэтому
+должны резолвиться одинаково и в контейнерах, и на хосте:
+
+* Linux / macOS: `sudo sh -c 'echo "127.0.0.1 namenode datanode hive-metastore postgres" >> /etc/hosts'`
+* Windows: та же строка в `C:\Windows\System32\drivers\etc\hosts` (Блокнот от имени
+  администратора).
+
+### 1.3. Windows: winutils
+
+Hadoop под Windows требует `winutils.exe` и `hadoop.dll`; в pyspark они не входят, на Linux
+и macOS не нужны. Без них сессия падает на `Did not find winutils.exe ... HADOOP_HOME and
+hadoop.home.dir are unset`. Скрипт скачивает обе утилиты и прописывает `HADOOP_HOME` и
+`PATH` в переменные среды пользователя — прав администратора не требует:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File host\install_winutils.ps1
+```
+
+По умолчанию ставит в `%USERPROFILE%\hadoop`, на другой диск — `-Prefix D:\hadoop`. После
+установки **откройте новый терминал**: переменные среды видны только процессам, запущенным
+после установки. Если терминал (или JupyterLab) уже был открыт, `get_spark()` подстрахует —
+он сам ищет `winutils.exe` в `%USERPROFILE%\hadoop`, `D:\hadoop` и `C:\hadoop` и настраивает
+`HADOOP_HOME` с `PATH` для своей JVM.
+
+### 1.4. Linux: файрвол
+
+Executor'ы подключаются к driver'у на хосте из подсети `172.28.0.0/24`. Если включён `ufw`,
+откройте её, иначе задачи будут висеть без ошибок:
+
+```bash
+sudo ufw allow from 172.28.0.0/24
+```
+
+### 1.5. Python 3.11 + Java 17 + pyspark 3.5.8
+
+Версии должны совпадать с кластером: PySpark 3.5 не поддерживает Python 3.12+ и Java 21, а
+при другой minor-версии Python падают любые Python UDF. Поэтому всё ставится в отдельное
+conda-окружение `spark-course`, системный Python и Java можно не трогать.
+
+Скрипт ставит Miniconda (если conda ещё нет), создаёт окружение и устанавливает
+[host/requirements.txt](host/requirements.txt). Повторный запуск безопасен — готовые шаги
+пропускаются:
+
+```bash
+bash host/install_miniconda.sh                                        # Linux / macOS
+```
+
+```powershell
+# Windows: ставим на D:, чтобы окружение и кэш пакетов не занимали C: (п. 1.1)
+powershell -ExecutionPolicy Bypass -File host\install_miniconda.ps1 -Prefix D:\miniconda3
+```
+
+Каталог установки по умолчанию `~/miniconda3` (`%USERPROFILE%\miniconda3`); меняется через
+`MINICONDA_PREFIX=/opt/miniconda3` или `-Prefix D:\miniconda3`. Окружения и кэш пакетов
+conda держит внутри этого каталога, поэтому отдельно их переносить не нужно. Путь — без
+пробелов и кириллицы.
+
+То же вручную:
+
+```bash
+conda create -n spark-course --override-channels -c conda-forge python=3.11 openjdk=17
+conda activate spark-course
+pip install -r host/requirements.txt
+```
+
+`--override-channels` берёт пакеты только из `conda-forge`: без него свежая Miniconda
+требует принять условия канала `defaults` (`CondaToSNonInteractiveError`). Java pyspark
+находит сам, `JAVA_HOME` задавать не нужно. Проверка: `python --version` → `3.11.x`,
+`java -version` → `17.x`.
+
+После установки **откройте новый терминал**, чтобы появилась команда `conda`. Если
+PowerShell пишет *«выполнение сценариев отключено в этой системе»* — один раз выполните
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` или используйте *Anaconda Prompt*.
+
+## 2. Запуск стенда
+
+Шаги п. 1 уже выполнены, образы поедут на `D:`.
 
 ```bash
 cd iceberg-course-infra
@@ -91,80 +215,7 @@ docker compose exec spark-master spark-submit /opt/jobs/catboost_smoke_job.py
 > Первый запуск Spark-приложения 1–2 минуты скачивает jar'ы Iceberg, CatBoost и JDBC из
 > Maven Central, дальше они берутся из кеша `~/.ivy2`.
 
-## 2. Подготовка хост-машины студента
-
-### 2.1. hosts-файл (обязательно)
-
-Имена `namenode`, `datanode` и `postgres` сохраняются в metastore и в JDBC-адресах, поэтому
-должны резолвиться одинаково и в контейнерах, и на хосте:
-
-* Linux / macOS: `sudo sh -c 'echo "127.0.0.1 namenode datanode hive-metastore postgres" >> /etc/hosts'`
-* Windows: та же строка в `C:\Windows\System32\drivers\etc\hosts` (Блокнот от имени
-  администратора).
-
-### 2.2. Python 3.11 + Java 17 + pyspark 3.5.8
-
-Версии должны совпадать с кластером: PySpark 3.5 не поддерживает Python 3.12+ и Java 21, а
-при другой minor-версии Python падают любые Python UDF. Поэтому всё ставится в отдельное
-conda-окружение `spark-course`, системный Python и Java можно не трогать.
-
-Скрипт ставит Miniconda (если conda ещё нет), создаёт окружение и устанавливает
-[host/requirements.txt](host/requirements.txt). Повторный запуск безопасен — готовые шаги
-пропускаются:
-
-```bash
-bash host/install_miniconda.sh                                        # Linux / macOS
-powershell -ExecutionPolicy Bypass -File host\install_miniconda.ps1   # Windows
-```
-
-Каталог установки по умолчанию `~/miniconda3` (`%USERPROFILE%\miniconda3`); меняется через
-`MINICONDA_PREFIX=/opt/miniconda3` или `-Prefix D:\miniconda3`. Путь — без пробелов и
-кириллицы.
-
-То же вручную:
-
-```bash
-conda create -n spark-course --override-channels -c conda-forge python=3.11 openjdk=17
-conda activate spark-course
-pip install -r host/requirements.txt
-```
-
-`--override-channels` берёт пакеты только из `conda-forge`: без него свежая Miniconda
-требует принять условия канала `defaults` (`CondaToSNonInteractiveError`). Java pyspark
-находит сам, `JAVA_HOME` задавать не нужно. Проверка: `python --version` → `3.11.x`,
-`java -version` → `17.x`.
-
-После установки **откройте новый терминал**, чтобы появилась команда `conda`. Если
-PowerShell пишет *«выполнение сценариев отключено в этой системе»* — один раз выполните
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` или используйте *Anaconda Prompt*.
-
-### 2.3. Windows: winutils
-
-Hadoop под Windows требует `winutils.exe` и `hadoop.dll`; в pyspark они не входят, на Linux
-и macOS не нужны. Без них сессия падает на `Did not find winutils.exe ... HADOOP_HOME and
-hadoop.home.dir are unset`. Скрипт скачивает обе утилиты и прописывает `HADOOP_HOME` и
-`PATH` в переменные среды пользователя — прав администратора не требует:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File host\install_winutils.ps1
-```
-
-По умолчанию ставит в `%USERPROFILE%\hadoop`, на другой диск — `-Prefix D:\hadoop`. После
-установки **откройте новый терминал**: переменные среды видны только процессам, запущенным
-после установки. Если терминал (или JupyterLab) уже был открыт, `get_spark()` подстрахует —
-он сам ищет `winutils.exe` в `%USERPROFILE%\hadoop`, `D:\hadoop` и `C:\hadoop` и настраивает
-`HADOOP_HOME` с `PATH` для своей JVM.
-
-### 2.4. Linux: файрвол
-
-Executor'ы подключаются к driver'у на хосте из подсети `172.28.0.0/24`. Если включён `ufw`,
-откройте её, иначе задачи будут висеть без ошибок:
-
-```bash
-sudo ufw allow from 172.28.0.0/24
-```
-
-### 2.5. Проверка с хоста (smoke test)
+## 3. Проверка стенда с хоста (smoke test)
 
 ```bash
 conda activate spark-course
@@ -177,7 +228,22 @@ cd host && python smoke_test.py
 `OK: стенд работает`. Файлы таблицы видны в http://localhost:9870 →
 *Utilities → Browse the file system* → `/warehouse/demo.db/hello`.
 
-## 3. Подключение из JupyterLab
+## 4. JupyterLab и demo.ipynb
+
+```bash
+conda activate spark-course
+jupyter lab
+```
+
+JupyterLab откроется в браузере на http://localhost:8888. Запускайте его **из корня
+репозитория**: в `notebooks/demo.ipynb` путь к `get_spark()` записан как `../host`.
+
+Откройте [notebooks/demo.ipynb](notebooks/demo.ipynb) и выполните ячейки сверху вниз — это
+тот же сценарий, что и в smoke-тесте, но по шагам и с выводом на экран. Последняя ячейка
+`spark.stop()` обязательна: без неё приложение продолжает держать ядра кластера.
+
+### Как это устроено
+
 
 ```python
 import sys
@@ -221,7 +287,7 @@ driver'а, jar-пакеты, каталог `iceberg`, HDFS и ресурсы. �
   в `./jobs` и запустите `docker compose exec spark-master spark-submit /opt/jobs/<script>.py`
   или через Airflow. Пример — [jobs/catboost_smoke_job.py](jobs/catboost_smoke_job.py).
 
-## 4. Airflow
+## 5. Airflow
 
 * DAG'и кладите в `./dags`, PySpark-скрипты для них — в `./jobs` (в контейнере `/opt/jobs`).
 * Готовые connections: `spark_default` → `spark://spark-master:7077` (для
@@ -242,27 +308,23 @@ docker compose down -v --remove-orphans     # полный сброс: HDFS, Pos
 
 | Симптом | Причина / решение |
 |---|---|
-| `UnknownHostException: namenode` / `datanode`, запись в HDFS висит | нет строки в hosts-файле (п. 2.1) |
-| `Python in worker has different version` | на хосте не Python 3.11 (п. 2.2) |
-| `JAVA_GATEWAY_EXITED`, ошибки `sun.nio` при старте сессии | нет Java 17 или используется Java 21 (п. 2.2) |
-| `Did not find winutils.exe`, `UnsatisfiedLinkError: NativeIO$Windows.access0` | Windows: не установлен winutils (п. 2.3) |
-| Задачи висят, executor'ы не могут подключиться к driver'у | Linux: `ufw` (п. 2.4); Docker Desktop: проверьте `SPARK_DRIVER_HOST` |
-| Задачи висят в `(0 + 2) / N`, приложение `WAITING` в UI master'а | кластер занят другими сессиями: закройте лишние, см. http://localhost:8090 |
+| `UnknownHostException: namenode` / `datanode`, запись в HDFS висит | нет строки в hosts-файле (п. 1.2) |
+| `Python in worker has different version` | на хосте не Python 3.11 (п. 1.5) |
+| `JAVA_GATEWAY_EXITED`, ошибки `sun.nio` при старте сессии | нет Java 17 или используется Java 21 (п. 1.5) |
+| `Did not find winutils.exe`, `UnsatisfiedLinkError: NativeIO$Windows.access0` | Windows: не установлен winutils (п. 1.3) |
+| Задачи висят, executor'ы не могут подключиться к driver'у | Linux: `ufw` (п. 1.4); Docker Desktop: проверьте `SPARK_DRIVER_HOST` |
+| Задачи висят в `(0 + 2) / N`, приложение `WAITING` в UI master'а | ваши ядра заняты другой сессией: закройте лишние ноутбуки, см. http://localhost:8090 |
 | `Pool overlaps with other one on this address space` при `up` | подсеть `172.28.0.0/24` занята: поменяйте её в `docker-compose.yml` и задайте `SPARK_DRIVER_HOST` |
 | Порт уже занят | остановите конфликтующий сервис или поменяйте левую часть `ports:` |
 | hive-metastore перезапускается | `docker compose logs hive-metastore`; обычно помогает полный сброс (выше) |
 | `failed to compute cache key: failed to send write: ... desktop-containerd` при `up --build` | кончилось место в виртуальном диске Docker Desktop (ниже) |
-| `Error 28 No space left on device` при `pip install` | кончилось место на диске с conda-окружением (ниже) |
+| `Error 28 No space left on device` при `pip install` | кончилось место на диске с conda-окружением: п. 1.1, восстановление — ниже |
 
-### Windows: нет места на диске `C:`
+### Windows: место на диске `C:` уже кончилось
 
-Docker Desktop и conda по умолчанию держат всё на `C:`: виртуальный диск с образами
-(`%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx`, около 10 ГБ) и окружение с кэшами
-(ещё 8–10 ГБ). И то, и другое переносится без прав администратора.
+Если перенос из п. 1.1 не был сделан заранее и `C:` забился, порядок такой.
 
-**Docker:** Settings → Resources → Advanced → **Disk image location** → укажите
-`D:\DockerData` → Apply & restart (Docker предложит перенести существующие данные). Быстро
-освободить место, ничего не перенося: `docker builder prune -a -f` и
+**Освободить место, ничего не перенося:** `docker builder prune -a -f` и
 `docker image prune -a -f`. Файл VHDX после удаления данных сам не уменьшается — сожмите
 его: `wsl --shutdown`, затем `wsl --manage docker-desktop-data --set-sparse true`.
 
@@ -270,17 +332,11 @@ Docker Desktop и conda по умолчанию держат всё на `C:`: �
 > volume'ы `iceberg-course_pg_data` и `iceberg-course_hadoop_*`, то есть базы
 > Airflow/metastore и все Iceberg-таблицы.
 
+**Перенести Docker и TEMP** — как в п. 1.1.
 
-Перенос **папки TEMP** для всех программ пользователя на диск D:
-
-```powershell
-New-Item -ItemType Directory -Force D:\temp
-setx TEMP D:\temp
-setx TMP D:\temp
-```
-
-**Conda:** переносить нужно и окружение, и кэш пакетов, и `%TEMP%` (туда pip распаковывает
-колёса, один `pyspark` — больше 300 МБ), иначе `Error 28` повторится:
+**Перенести conda, не переустанавливая Miniconda с `C:`.** Окружения и кэш пакетов
+переезжают отдельно от самой Miniconda; `%TEMP%` тоже обязателен, иначе `Error 28`
+повторится на распаковке колёс:
 
 ```powershell
 conda env remove -n spark-course; conda clean --all --yes; pip cache purge
@@ -294,10 +350,7 @@ setx TEMP D:\conda\tmp
 ```
 
 Откройте новый терминал (`setx` действует только на новые процессы) и создайте окружение
-заново (п. 2.2). Активация по имени `conda activate spark-course` продолжает работать.
-
-
-
+заново (п. 1.5). Активация по имени `conda activate spark-course` продолжает работать.
 
 ### Windows: «Невозможно запустить Windchill ProductionPoint Client Manager (порт 8989)»
 

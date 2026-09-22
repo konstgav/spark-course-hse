@@ -98,7 +98,7 @@ def _setup_hadoop_home() -> None:
     Переменные среды, выставленные host/install_winutils.ps1, видны только в
     терминалах, открытых после установки. Чтобы не зависеть от этого, ищем
     winutils.exe в типовых каталогах и настраиваем окружение сами: JVM стартует
-    из этого процесса и наследует его (см. README.md, п. 2.3).
+    из этого процесса и наследует его (см. README.md, п. 1.3).
     """
     if platform.system() != "Windows":
         return
@@ -116,7 +116,7 @@ def _setup_hadoop_home() -> None:
         return
 
     print("ВНИМАНИЕ: winutils.exe не найден, Hadoop не сможет работать с локальными "
-          "файлами. Запустите host\\install_winutils.ps1 (см. README.md, п. 2.3)")
+          "файлами. Запустите host\\install_winutils.ps1 (см. README.md, п. 1.3)")
 
 
 def get_spark(app_name: str = "student-notebook", **extra_conf: str) -> SparkSession:

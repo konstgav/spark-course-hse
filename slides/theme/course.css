@@ -1,0 +1,378 @@
+/* @theme course */
+
+/*
+ * Тема мини-курса «Инженерная аналитика больших данных: Spark, Iceberg, HDFS».
+ * Пермский кампус НИУ ВШЭ × Digital Future Systems, осень 2026.
+ *
+ * Палитра собрана из двух логотипов с титульного слайда:
+ *   #0F2D69 — НИУ ВШЭ (logo-2.svg)      -> теория, светло-голубой фон
+ *   #C0272D — Digital Future Systems    -> практика, светло-розовый фон
+ *
+ * Классы слайдов (директива в комментарии на самом слайде):
+ *   <!-- _class: title    -->  титульный слайд с логотипами
+ *   <!-- _class: theory   -->  теория, светло-голубой фон
+ *   <!-- _class: practice -->  задание для студентов, светло-розовый фон
+ *   <!-- _class: lead     -->  разделитель: крупный заголовок по центру
+ *   без класса                 белый фон (план, итоги, вопросы)
+ *
+ * Вспомогательные классы внутри слайда: .note, .columns, .stack.
+ */
+
+@import 'default';
+
+section {
+  /* Бренд */
+  --navy: #0f2d69;
+  --navy-soft: #2b4a8b;
+  --red: #c0272d;
+  --red-soft: #d9535a;
+
+  /* Текст */
+  --ink: #1a1f2b;
+  --muted: #5b657a;
+
+  /* Фоны слайдов */
+  --theory-bg: #eaf2fc;
+  --theory-edge: #b9d2f0;
+  --practice-bg: #fdecef;
+  --practice-edge: #f2c3ca;
+  --code-bg: #f3f6fb;
+  --code-edge: #dbe4f0;
+
+  --font-sans: "Segoe UI", "PT Sans", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "DejaVu Sans Mono", monospace;
+
+  background: #ffffff;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 25px;
+  line-height: 1.5;
+  padding: 62px 72px 66px;
+  /* место под метку слайда сверху */
+  justify-content: flex-start;
+}
+
+/* --- Заголовки ------------------------------------------------------------ */
+
+h1 {
+  font-size: 44px;
+  line-height: 1.15;
+  color: var(--navy);
+  margin: 0 0 22px;
+}
+
+h2 {
+  font-size: 34px;
+  line-height: 1.2;
+  color: var(--navy);
+  margin: 0 0 20px;
+  padding-left: 16px;
+  border-left: 5px solid var(--navy);
+}
+
+h3 {
+  font-size: 26px;
+  color: var(--navy-soft);
+  margin: 26px 0 10px;
+}
+
+strong { color: var(--navy); }
+
+a { color: var(--navy-soft); }
+
+/* --- Списки --------------------------------------------------------------- */
+
+ul, ol { margin: 0 0 14px; padding-left: 30px; }
+li { margin-bottom: 9px; }
+li::marker { color: var(--navy-soft); }
+
+/* --- Код ------------------------------------------------------------------ */
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--code-bg);
+  border: 1px solid var(--code-edge);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-edge);
+  border-left: 5px solid var(--navy-soft);
+  border-radius: 6px;
+  padding: 16px 20px;
+  font-size: 20px;
+  line-height: 1.45;
+  box-shadow: none;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1em;
+}
+
+/* --- Таблицы -------------------------------------------------------------- */
+
+table {
+  border-collapse: collapse;
+  font-size: 21px;
+  margin: 6px 0 14px;
+}
+
+th {
+  background: var(--navy);
+  color: #ffffff;
+  font-weight: 600;
+  text-align: left;
+}
+
+th, td {
+  border: 1px solid var(--theory-edge);
+  padding: 8px 14px;
+}
+
+tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.55); }
+
+/* --- Цитата и сноска ------------------------------------------------------ */
+
+blockquote {
+  border-left: 5px solid var(--navy-soft);
+  background: rgba(255, 255, 255, 0.6);
+  margin: 6px 0 14px;
+  padding: 10px 20px;
+  color: var(--muted);
+  font-style: normal;
+}
+
+blockquote::before, blockquote::after { content: none; }
+
+.note {
+  font-size: 20px;
+  color: var(--muted);
+}
+
+/* --- Колонки -------------------------------------------------------------- */
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 34px;
+  align-items: start;
+}
+
+/* --- Картинки ------------------------------------------------------------- */
+
+img { background: none; }
+
+p:has(> img:only-child) { text-align: center; margin: 4px 0 10px; }
+
+/* --- Колонтитулы и нумерация --------------------------------------------- */
+
+header {
+  color: var(--muted);
+  font-size: 17px;
+  left: 72px;
+  top: 26px;
+}
+
+footer {
+  color: var(--muted);
+  font-size: 16px;
+  left: 72px;
+  bottom: 24px;
+}
+
+section::after {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 600;
+  right: 40px;
+  bottom: 22px;
+}
+
+/* =========================================================================
+ * ТЕОРИЯ — светло-голубой фон
+ * ========================================================================= */
+
+section.theory {
+  background: var(--theory-bg);
+  border-top: 7px solid var(--navy);
+}
+
+section.theory::before {
+  content: "Теория";
+  position: absolute;
+  top: 26px;
+  left: 72px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--navy-soft);
+}
+
+section.theory h1, section.theory h2 { margin-top: 18px; }
+
+/* =========================================================================
+ * ПРАКТИКА — светло-розовый фон, задание для студентов
+ * ========================================================================= */
+
+section.practice {
+  background: var(--practice-bg);
+  border-top: 7px solid var(--red);
+}
+
+section.practice::before {
+  content: "Практика — выполните на своей машине";
+  position: absolute;
+  top: 26px;
+  left: 72px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+section.practice h1,
+section.practice h2,
+section.practice h3 { color: var(--red); margin-top: 18px; }
+
+section.practice h2 { border-left-color: var(--red); }
+
+section.practice strong { color: var(--red); }
+
+section.practice li::marker { color: var(--red-soft); font-weight: 700; }
+
+section.practice pre { border-left-color: var(--red); }
+
+section.practice code { border-color: var(--practice-edge); background: #fff7f8; }
+
+section.practice th { background: var(--red); }
+
+section.practice th, section.practice td { border-color: var(--practice-edge); }
+
+section.practice blockquote { border-left-color: var(--red-soft); }
+
+/* Шаги задания: ol с крупной нумерацией */
+section.practice ol {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: step;
+}
+
+section.practice ol > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 52px;
+  margin-bottom: 14px;
+}
+
+section.practice ol > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================================================
+ * ТИТУЛЬНЫЙ СЛАЙД
+ * ========================================================================= */
+
+section.title {
+  background: linear-gradient(160deg, #ffffff 0%, #f4f8fd 46%, var(--theory-bg) 100%);
+  border-top: 7px solid var(--navy);
+  border-bottom: 7px solid var(--red);
+  padding: 52px 72px 56px;
+  justify-content: flex-start;
+}
+
+section.title::after { content: none; }
+
+/* первый абзац слайда — строка с логотипами */
+section.title > p:first-of-type {
+  display: flex;
+  align-items: center;
+  gap: 46px;
+  margin: 0;
+  text-align: left;
+}
+
+section.title h1 {
+  font-size: 44px;
+  line-height: 1.16;
+  margin: auto 0 0;
+  max-width: 27ch;
+}
+
+/* Логотипы: оба с прозрачным фоном, масштабируются по ширине */
+section.title img[src$="logo-2.svg"] { width: 88px; height: 88px; }
+
+section.title img[src$="logo_new.png"] { width: 220px; height: auto; }
+
+section.title h2 {
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--muted);
+  border-left: none;
+  padding-left: 0;
+  margin: 12px 0 0;
+}
+
+section.title table {
+  font-size: 20px;
+  border-collapse: collapse;
+  max-width: 900px;
+  margin: 26px 0 0;
+}
+
+section.title thead { display: none; }
+
+section.title table td {
+  border: none;
+  border-top: 1px solid var(--theory-edge);
+  padding: 7px 26px 7px 0;
+  background: none;
+}
+
+section.title table td:first-child {
+  color: var(--muted);
+  white-space: nowrap;
+  width: 1%;
+}
+
+section.title table td:last-child { color: var(--ink); font-weight: 600; }
+
+/* =========================================================================
+ * РАЗДЕЛИТЕЛЬ
+ * ========================================================================= */
+
+section.lead {
+  background: linear-gradient(160deg, #ffffff 0%, var(--theory-bg) 100%);
+  border-left: 9px solid var(--navy);
+  justify-content: center;
+  text-align: left;
+}
+
+section.lead h1 { font-size: 52px; max-width: 24ch; }
+
+section.lead h2 {
+  border-left: none;
+  padding-left: 0;
+  font-weight: 400;
+  color: var(--muted);
+}
