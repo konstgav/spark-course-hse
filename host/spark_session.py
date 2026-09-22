@@ -92,6 +92,33 @@ HOST_SPARK_CONF = {
 }
 
 
+def _setup_hadoop_home() -> None:
+    """Windows: Hadoop ищет winutils.exe по HADOOP_HOME, а hadoop.dll — по PATH.
+
+    Переменные среды, выставленные host/install_winutils.ps1, видны только в
+    терминалах, открытых после установки. Чтобы не зависеть от этого, ищем
+    winutils.exe в типовых каталогах и настраиваем окружение сами: JVM стартует
+    из этого процесса и наследует его (см. README.md, п. 2.3).
+    """
+    if platform.system() != "Windows":
+        return
+
+    candidates = [os.environ["HADOOP_HOME"]] if os.environ.get("HADOOP_HOME") else []
+    candidates += [os.path.expandvars(r"%USERPROFILE%\hadoop"), r"D:\hadoop", r"C:\hadoop"]
+
+    for home in candidates:
+        bin_dir = os.path.join(home, "bin")
+        if not os.path.isfile(os.path.join(bin_dir, "winutils.exe")):
+            continue
+        os.environ["HADOOP_HOME"] = home
+        if bin_dir.lower() not in os.environ.get("PATH", "").lower():
+            os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + bin_dir
+        return
+
+    print("ВНИМАНИЕ: winutils.exe не найден, Hadoop не сможет работать с локальными "
+          "файлами. Запустите host\\install_winutils.ps1 (см. README.md, п. 2.3)")
+
+
 def get_spark(app_name: str = "student-notebook", **extra_conf: str) -> SparkSession:
     """Создаёт (или возвращает уже созданную) SparkSession на кластере в Docker.
 
@@ -101,6 +128,7 @@ def get_spark(app_name: str = "student-notebook", **extra_conf: str) -> SparkSes
     # Executor'ы запускают Python-воркеры своим `python3` (Python 3.11 в образе).
     # Путь к Python хоста (например, из conda/venv) в контейнерах не существует.
     os.environ["PYSPARK_PYTHON"] = "python3"
+    _setup_hadoop_home()
 
     builder = SparkSession.builder.appName(app_name)
     conf = {**HOST_SPARK_CONF, "spark.driver.host": driver_host()}

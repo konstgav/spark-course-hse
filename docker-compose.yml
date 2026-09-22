@@ -52,7 +52,7 @@ x-airflow-common: &airflow-common
   image: iceberg-course/airflow:${AIRFLOW_VERSION}-spark${SPARK_VERSION}
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5433/airflow
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
@@ -63,7 +63,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
     # Connections, доступные в DAG'ах без настройки через UI
     AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type": "spark", "host": "spark://spark-master", "port": 7077}'
-    AIRFLOW_CONN_DWH_POSTGRES: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/dwh
+    AIRFLOW_CONN_DWH_POSTGRES: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5433/dwh
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -87,7 +87,7 @@ services:
     restart: on-failure
     # md5 вместо SCRAM: JDBC-драйвер внутри Hive Metastore 2.3.2 слишком старый
     # для SCRAM ("authentication type 10 is not supported").
-    command: ["postgres", "-c", "password_encryption=md5"]
+    command: ["postgres", "-c", "password_encryption=md5", "-c", "port=5433"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -98,9 +98,9 @@ services:
       - pg_data:/var/lib/postgresql/data
       - ./config/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
     ports:
-      - "5432:5432"
+      - "5433:5433"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres -p 5433"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -172,9 +172,9 @@ services:
       datanode:
         condition: service_healthy
     environment:
-      SERVICE_PRECONDITION: "namenode:9000 postgres:5432"
+      SERVICE_PRECONDITION: "namenode:9000 postgres:5433"
       CORE_CONF_fs_defaultFS: hdfs://namenode:9000
-      HIVE_SITE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://postgres:5432/metastore"
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://postgres:5433/metastore"
       HIVE_SITE_CONF_javax_jdo_option_ConnectionDriverName: "org.postgresql.Driver"
       HIVE_SITE_CONF_javax_jdo_option_ConnectionUserName: ${POSTGRES_USER}
       HIVE_SITE_CONF_javax_jdo_option_ConnectionPassword: ${POSTGRES_PASSWORD}

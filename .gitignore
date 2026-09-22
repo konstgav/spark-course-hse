@@ -22,16 +22,39 @@ env/
 # ---- Jupyter ----------------------------------------------------------------
 .ipynb_checkpoints/
 
-# ---- Spark / CatBoost (артефакты driver'а в текущем каталоге) ---------------
+# ---- Spark (артефакты driver'а в текущем каталоге) --------------------------
 spark-warehouse/
 metastore_db/
 derby.log
+tmp/
+
+# ---- Обучение моделей -------------------------------------------------------
+# CatBoost пишет логи обучения в каталог запуска driver'а
 catboost_info/
+catboost_training.json
 learn_error.tsv
 test_error.tsv
 time_left.tsv
-catboost_training.json
-tmp/
+snapshot.bkp
+
+# Сохранённые модели (CatBoost, sklearn, ONNX, Spark ML, XGBoost/LightGBM)
+*.cbm
+*.pkl
+*.pickle
+*.joblib
+*.onnx
+*.xgb
+*.lgb
+*.ckpt
+models/
+model/
+
+# Трекинг экспериментов и логи метрик
+mlruns/
+mlartifacts/
+lightning_logs/
+wandb/
+runs/
 
 # ---- Стенд ------------------------------------------------------------------
 # Логи Airflow и сырые данные: в репозитории только пустые каталоги

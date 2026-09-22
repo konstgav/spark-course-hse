@@ -50,9 +50,16 @@ $env:PATH = "$env:PATH;$BinDir"
 
 # --- 3. Проверка -------------------------------------------------------------
 # hadoop.dll ищется через java.library.path, куда на Windows входит PATH, —
-# копировать её в C:\Windows\System32 не нужно.
-& (Join-Path $BinDir "winutils.exe") systeminfo | Select-Object -First 1
-if ($LASTEXITCODE -ne 0) { throw "winutils.exe завершилась с кодом $LASTEXITCODE" }
+# копировать её в C:\Windows\System32 не нужно, достаточно проверить, что файл на месте.
+if ((Get-Item (Join-Path $BinDir "hadoop.dll")).Length -eq 0) {
+    throw "hadoop.dll скачался пустым, удалите $BinDir и запустите скрипт заново"
+}
+
+# Именно ls/chmod вызывает Hadoop, когда выставляет права на локальных файлах.
+# (winutils.exe systeminfo здесь не годится: на локализованной Windows он падает с
+# PdhAddCounter ... 0xc0000bb8 — счётчики производительности названы не по-английски.)
+& (Join-Path $BinDir "winutils.exe") ls $BinDir
+if ($LASTEXITCODE -ne 0) { Write-Warning "winutils.exe ls завершилась с кодом $LASTEXITCODE" }
 
 Write-Host ""
 Write-Host "Готово: HADOOP_HOME = $Prefix"

@@ -54,11 +54,11 @@ print(spark.table("iceberg.demo.hello").toPandas())
 
 # 5. Запись витрины в Postgres (база dwh) по JDBC
 spark.table("iceberg.demo.hello").write.format("jdbc").mode("overwrite").options(
-    url="jdbc:postgresql://postgres:5432/dwh", dbtable="public.hello",
+    url="jdbc:postgresql://postgres:5433/dwh", dbtable="public.hello",
     user="course", password="course_pass", driver="org.postgresql.Driver",
 ).save()
 print("JDBC: записано строк в dwh.public.hello:", spark.read.format("jdbc").options(
-    url="jdbc:postgresql://postgres:5432/dwh", dbtable="public.hello",
+    url="jdbc:postgresql://postgres:5433/dwh", dbtable="public.hello",
     user="course", password="course_pass", driver="org.postgresql.Driver",
 ).load().count())
 

@@ -15,7 +15,7 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
              ├───────────────────────────────▶│ hive-metastore │── схема ──┐       │
              │ hdfs://namenode:9000           └────────────────┘           ▼       ▼
              ├───────────────────────────────▶ namenode + datanode ◀──── данные Iceberg
-             │ jdbc:postgresql://postgres:5432                       ┌──────────────────────────┐
+             │ jdbc:postgresql://postgres:5433                       ┌──────────────────────────┐
              └─────────────────────────────────────────────────────▶ │ postgres                 │
                                                                      │ airflow / metastore / dwh│
  Браузер ──▶ Airflow :8080 (webserver + scheduler, spark-submit) ──▶ └──────────────────────────┘
@@ -35,7 +35,7 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 | namenode | HDFS NameNode | `hdfs://namenode:9000`, UI http://localhost:9870 |
 | datanode | HDFS DataNode | порт данных `9866`, UI http://localhost:9864 |
 | hive-metastore | каталог Iceberg | `thrift://hive-metastore:9083` |
-| postgres | базы `airflow`, `metastore`, `dwh` | `localhost:5432`, `course` / `course_pass` |
+| postgres | базы `airflow`, `metastore`, `dwh` | `localhost:5433`, `course` / `course_pass` |
 | airflow-webserver / -scheduler | Airflow 2.10 (LocalExecutor) | http://localhost:8080, `admin` / `admin` |
 | Spark UI приложения | поднимается driver'ом на хосте | http://localhost:4040 |
 
@@ -48,7 +48,7 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 * Docker Engine 24+ с Compose v2 (Linux) или Docker Desktop (Mac/Windows):
   **не меньше 8 GB RAM, 4 CPU и 10 GB на диске**. Стенд в простое занимает около 3 GB,
   каждый executor добавляет примерно 1.4 GB.
-* Свободные порты: 4040, 5432, 7077–7079, 8080–8082, 8090, 9000, 9083, 9864, 9866, 9870.
+* Свободные порты: 4040, 5433, 7077–7079, 8080–8082, 8090, 9000, 9083, 9864, 9866, 9870.
 * На Apple Silicon образы `bde2020/*` (HDFS, Hive) работают через эмуляцию amd64 —
   медленнее, но работают.
 * Windows: если на диске `C:` мало места, см. [Решение проблем](#решение-проблем).
@@ -150,7 +150,10 @@ powershell -ExecutionPolicy Bypass -File host\install_winutils.ps1
 ```
 
 По умолчанию ставит в `%USERPROFILE%\hadoop`, на другой диск — `-Prefix D:\hadoop`. После
-установки **откройте новый терминал**.
+установки **откройте новый терминал**: переменные среды видны только процессам, запущенным
+после установки. Если терминал (или JupyterLab) уже был открыт, `get_spark()` подстрахует —
+он сам ищет `winutils.exe` в `%USERPROFILE%\hadoop`, `D:\hadoop` и `C:\hadoop` и настраивает
+`HADOOP_HOME` с `PATH` для своей JVM.
 
 ### 2.4. Linux: файрвол
 
@@ -201,7 +204,7 @@ driver'а, jar-пакеты, каталог `iceberg`, HDFS и ресурсы. �
   работают одновременно, третий ждёт ресурсов. Неиспользуемые сессии закрывайте
   через `spark.stop()`, занятость видна на http://localhost:8090.
 * **Запись в Postgres** выполняют executor'ы, поэтому в JDBC URL указывайте имя `postgres`,
-  а не `localhost`: `jdbc:postgresql://postgres:5432/dwh`.
+  а не `localhost`: `jdbc:postgresql://postgres:5433/dwh`.
 * **Сырые файлы** читают executor'ы, поэтому их нужно загрузить в HDFS: положите файл
   в `./data` и выполните
   ```bash
@@ -267,6 +270,15 @@ Docker Desktop и conda по умолчанию держат всё на `C:`: �
 > volume'ы `iceberg-course_pg_data` и `iceberg-course_hadoop_*`, то есть базы
 > Airflow/metastore и все Iceberg-таблицы.
 
+
+Перенос **папки TEMP** для всех программ пользователя на диск D:
+
+```powershell
+New-Item -ItemType Directory -Force D:\temp
+setx TEMP D:\temp
+setx TMP D:\temp
+```
+
 **Conda:** переносить нужно и окружение, и кэш пакетов, и `%TEMP%` (туда pip распаковывает
 колёса, один `pyspark` — больше 300 МБ), иначе `Error 28` повторится:
 
@@ -284,6 +296,9 @@ setx TEMP D:\conda\tmp
 Откройте новый терминал (`setx` действует только на новые процессы) и создайте окружение
 заново (п. 2.2). Активация по имени `conda activate spark-course` продолжает работать.
 
+
+
+
 ### Windows: «Невозможно запустить Windchill ProductionPoint Client Manager (порт 8989)»
 
 Окно появляется после установки Docker Desktop; к стенду отношения не имеет — порт 8989
@@ -292,6 +307,20 @@ setx TEMP D:\conda\tmp
 
 ```powershell
 setx WPP_CLIENT_MSG_PORT 8990
+```
+
+### Если контейнер hive-metastore не запускается
+
+```powershell
+docker compose ps hive-metastore          # Restarting / unhealthy вместо healthy
+docker compose logs --tail 50 hive-metastore
+
+docker compose up -d --force-recreate hive-metastore
+docker compose logs -f hive-metastore
+
+docker compose rm -sf hive-metastore
+docker image rm bde2020/hive:2.3.2-postgresql-metastore
+docker compose up -d hive-metastore
 ```
 
 ## Структура
