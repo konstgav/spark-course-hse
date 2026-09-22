@@ -11,6 +11,7 @@ name: iceberg-course
 #   spark-worker-1  Spark worker (2 ядра / 2g)
 #   spark-worker-2  Spark worker (2 ядра / 2g)
 #   airflow-*       Airflow 2 (LocalExecutor) + клиент Spark для spark-submit
+#   metabase        BI поверх витрины dwh: графики и дашборды (:3000)
 #
 # JupyterLab в стек не входит: студенты запускают его на хост-машине, а PySpark
 # driver подключается к кластеру через опубликованные порты (см. README.md).
@@ -300,6 +301,62 @@ services:
     environment:
       <<: *airflow-common-env
       AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+
+  # ---------------------------------------------------------------------------
+  # METABASE: графики и дашборды по данным Postgres (витрина dwh)
+  # ---------------------------------------------------------------------------
+  # Служебную базу Metabase создаёт init-скрипт Postgres, но только при первом
+  # создании тома pg_data. На уже развёрнутом стенде том существует, поэтому базу
+  # доводит этот одноразовый контейнер — команда идемпотентна и на свежем томе
+  # просто ничего не делает.
+  metabase-init:
+    image: postgres:15
+    container_name: course-metabase-init
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        psql -h postgres -p 5433 -U "${POSTGRES_USER}" -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+        SELECT 'CREATE DATABASE "metabase"'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'metabase')\gexec
+        SQL
+
+  metabase:
+    image: metabase/metabase:${METABASE_TAG}
+    container_name: course-metabase
+    hostname: metabase
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      metabase-init:
+        condition: service_completed_successfully
+    environment:
+      # Служебные данные Metabase (вопросы, дашборды, пользователи) — в Postgres,
+      # а не в H2 по умолчанию: H2 не переживает жёсткую остановку контейнера.
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: postgres
+      MB_DB_PORT: "5433"
+      MB_DB_DBNAME: metabase
+      MB_DB_USER: ${POSTGRES_USER}
+      MB_DB_PASS: ${POSTGRES_PASSWORD}
+      JAVA_TIMEZONE: Europe/Moscow
+      # Без лимита JVM забирает четверть памяти хоста — на 8 GB это лишний гигабайт
+      JAVA_OPTS: -Xmx1g
+    ports:
+      - "3000:3000"   # Web UI
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      # первый старт прогоняет миграции служебной базы: это 1-3 минуты
+      start_period: 120s
+      retries: 20
 
 networks:
   default:

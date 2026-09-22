@@ -12,6 +12,7 @@
  *   <!-- _class: title    -->  титульный слайд с логотипами
  *   <!-- _class: theory   -->  теория, светло-голубой фон
  *   <!-- _class: practice -->  задание для студентов, светло-розовый фон
+ *   <!-- _class: book     -->  книга: обложка слева (split-фон), аннотация справа
  *   <!-- _class: lead     -->  разделитель: крупный заголовок по центру
  *   без класса                 белый фон (план, итоги, вопросы)
  *
@@ -356,6 +357,51 @@ section.title table td:first-child {
 }
 
 section.title table td:last-child { color: var(--ink); font-weight: 600; }
+
+/* =========================================================================
+ * РЕКОМЕНДОВАННАЯ ЛИТЕРАТУРА — обложка слева, аннотация справа
+ * Слайд строится на split-фоне Marp: ![bg left:34% fit](img/cover-*.png)
+ * ========================================================================= */
+
+section.book {
+  background: #eef3fa;
+  border-top: 7px solid var(--navy-soft);
+  font-size: 23px;
+}
+
+/* метка сдвинута вправо на ширину колонки с обложкой */
+section.book::before {
+  content: "Рекомендованная литература";
+  position: absolute;
+  top: 26px;
+  left: calc(34% + 72px);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--navy-soft);
+}
+
+section.book h2 {
+  font-size: 30px;
+  margin-top: 18px;
+}
+
+/* строка с авторами и издательством */
+section.book em {
+  display: block;
+  font-style: normal;
+  font-size: 20px;
+  color: var(--muted);
+  margin: -8px 0 18px;
+}
+
+/* подвал не помещается в суженную колонку — на этих слайдах он лишний */
+section.book footer { display: none; }
+
+section.book ul { margin-bottom: 16px; }
+
+section.book li { margin-bottom: 7px; }
 
 /* =========================================================================
  * РАЗДЕЛИТЕЛЬ

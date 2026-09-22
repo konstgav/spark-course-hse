@@ -17,8 +17,9 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
              ├───────────────────────────────▶ namenode + datanode ◀──── данные Iceberg
              │ jdbc:postgresql://postgres:5433                       ┌──────────────────────────┐
              └─────────────────────────────────────────────────────▶ │ postgres                 │
-                                                                     │ airflow / metastore / dwh│
- Браузер ──▶ Airflow :8080 (webserver + scheduler, spark-submit) ──▶ └──────────────────────────┘
+                                                                     │ airflow / metastore /    │
+ Браузер ──▶ Airflow :8080 (webserver + scheduler, spark-submit) ──▶ │ dwh / metabase           │
+ Браузер ──▶ Metabase :3000 (графики по витрине dwh) ──────────────▶ └──────────────────────────┘
 ```
 
 * **Данные** Iceberg-таблиц лежат в HDFS (`hdfs://namenode:9000/warehouse`).
@@ -37,6 +38,7 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 | hive-metastore | каталог Iceberg | `thrift://hive-metastore:9083` |
 | postgres | базы `airflow`, `metastore`, `dwh` | `localhost:5433`, `course` / `course_pass` |
 | airflow-webserver / -scheduler | Airflow 2.10 (LocalExecutor) | http://localhost:8080, `admin` / `admin` |
+| metabase | графики и дашборды по витрине `dwh` | http://localhost:3000 |
 | Spark UI приложения | поднимается driver'ом на хосте | http://localhost:4040 |
 
 Версии и пароли задаются в [.env](.env), версии jar-пакетов — в
@@ -47,9 +49,9 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 
 * Docker Engine 24+ с Compose v2 (Linux) или Docker Desktop (Mac/Windows):
   **не меньше 8 GB RAM, 4 CPU и 20 GB на диске** (образы Docker ~10 GB, окружение conda
-  с кэшами ещё 8–10 GB). Стенд в простое занимает около 3 GB,
-  каждый executor добавляет примерно 1.4 GB.
-* Свободные порты: 4040, 5433, 7077–7079, 8080–8082, 8090, 9000, 9083, 9864, 9866, 9870.
+  с кэшами ещё 8–10 GB). Стенд в простое занимает около 4 GB
+  (из них ~1 GB — Metabase), каждый executor добавляет примерно 1.4 GB.
+* Свободные порты: 3000, 4040, 5433, 7077–7079, 8080–8082, 8090, 9000, 9083, 9864, 9866, 9870.
 * На Apple Silicon образы `bde2020/*` (HDFS, Hive) работают через эмуляцию amd64 —
   медленнее, но работают.
 * Windows: Docker и conda по умолчанию занимают ~20 ГБ на `C:` — перенесите их на `D:`
@@ -190,8 +192,8 @@ docker compose ps -a
 
 Первый запуск занимает 5–15 минут: скачиваются базовые образы, собираются
 `iceberg-course/spark` и `iceberg-course/airflow`. Ожидаемое состояние: все сервисы `Up`,
-у сервисов с healthcheck — `(healthy)`, `airflow-init` — `Exited (0)` (одноразовая
-инициализация).
+у сервисов с healthcheck — `(healthy)`, а `airflow-init` и `metabase-init` —
+`Exited (0)` (одноразовые инициализации).
 
 Проверка кластера изнутри Docker:
 
@@ -296,6 +298,38 @@ driver'а, jar-пакеты, каталог `iceberg`, HDFS и ресурсы. �
   [config/spark/spark-defaults.conf](config/spark/spark-defaults.conf).
 * Новые DAG'и создаются на паузе и появляются в UI в течение ~30 секунд.
 
+## 6. Metabase: графики по витрине
+
+http://localhost:3000. Первый вход просит завести администратора — почта и пароль любые,
+установка локальная и наружу не смотрит.
+
+Дальше один раз подключается витрина: **Add database** → **PostgreSQL**.
+
+| Поле | Значение |
+|---|---|
+| Display name | `dwh` |
+| Host | `postgres` |
+| Port | `5433` |
+| Database name | `dwh` |
+| Username / Password | `course` / `course_pass` — значения `POSTGRES_USER` и `POSTGRES_PASSWORD` в [.env](.env) |
+
+Host — именно `postgres`, а не `localhost`: Metabase работает внутри сети Docker, и
+`localhost` для него означает его собственный контейнер. По той же причине порт `5433`,
+а не проброшенный на хост.
+
+Дальше *New → Question* или *New → Dashboard* по таблицам `dwh`. Данные в витрину кладёт
+Spark из ноутбука (п. 4) или DAG в Airflow — Metabase только читает.
+
+Свои данные (вопросы, дашборды, пользователи) Metabase хранит в базе `metabase` того же
+Postgres, поэтому они переживают `docker compose down`. Сбросить только Metabase, не
+трогая Iceberg-таблицы:
+
+```bash
+docker compose stop metabase
+docker compose exec postgres psql -U course -p 5433 -d postgres -c "DROP DATABASE metabase;"
+docker compose up -d metabase
+```
+
 ## Остановка и сброс
 
 ```bash
@@ -316,6 +350,7 @@ docker compose down -v --remove-orphans     # полный сброс: HDFS, Pos
 | Задачи висят в `(0 + 2) / N`, приложение `WAITING` в UI master'а | ваши ядра заняты другой сессией: закройте лишние ноутбуки, см. http://localhost:8090 |
 | `Pool overlaps with other one on this address space` при `up` | подсеть `172.28.0.0/24` занята: поменяйте её в `docker-compose.yml` и задайте `SPARK_DRIVER_HOST` |
 | Порт уже занят | остановите конфликтующий сервис или поменяйте левую часть `ports:` |
+| Metabase долго в статусе `starting` | первый запуск прогоняет миграции служебной базы, это 1–3 минуты; дальше `docker compose logs metabase` |
 | hive-metastore перезапускается | `docker compose logs hive-metastore`; обычно помогает полный сброс (выше) |
 | `failed to compute cache key: failed to send write: ... desktop-containerd` при `up --build` | кончилось место в виртуальном диске Docker Desktop (ниже) |
 | `Error 28 No space left on device` при `pip install` | кончилось место на диске с conda-окружением: п. 1.1, восстановление — ниже |
