@@ -62,6 +62,8 @@ logs/*
 !logs/.gitkeep
 data/*
 !data/.gitkeep
+# выборка для занятия 1 (generator/make_sample.py) хранится в git
+!data/sample/
 
 # Локальные переопределения переменных (.env с дефолтами курса хранится в git)
 .env.local

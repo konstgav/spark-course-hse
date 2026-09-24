@@ -28,6 +28,12 @@ python generator/generate_retail.py                 # из корня репоз
 Если меняете `--start` или `--days`, поменяйте и `start_date` / `end_date` в
 [dags/retail_sales_bronze.py](../dags/retail_sales_bronze.py).
 
+### Выборка для занятия 1
+
+`data/sample/` — один день (суббота, 5 сентября) в одном файле `sales.csv` (~38 тыс. строк,
+3,3 МБ) и те же справочники. Хранится в git, поэтому генерировать её не нужно; пересобрать —
+`python generator/make_sample.py`. Поля и дефекты — те же, что описаны ниже.
+
 ## Файлы
 
 ```

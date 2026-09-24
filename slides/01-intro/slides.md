@@ -13,7 +13,7 @@ footer: 'Инженерная аналитика больших данных · 
 
 # Инженерная аналитика больших данных: Spark, Iceberg, HDFS
 
-## Мини-курс · занятие 1 — стенд курса
+## Мини-курс · занятие 1 — стенд курса и Spark DataFrame API
 
 |  |  |
 |---|---|
@@ -91,9 +91,9 @@ footer: 'Инженерная аналитика больших данных · 
 
 <!-- _class: lead -->
 
-# Занятие 1. Стенд курса
+# Занятие 1. Стенд курса и Spark DataFrame API
 
-## Что мы поднимаем, из чего это состоит и как к этому подключаться
+## Поднимаем стенд, затем учимся работать с данными на Spark
 
 ---
 
@@ -313,24 +313,196 @@ python smoke_test.py
 
 ---
 
+<!-- _class: lead -->
+
+# Часть 2. Spark DataFrame API
+
+## Как Spark превращает ваш код в распределённое вычисление
+
+---
+
+<!-- _class: theory -->
+
+## DataFrame = строки + схема
+
+**DataFrame** — таблица: набор строк и **схема**, то есть имена и типы колонок.
+
+| колонка | тип |
+|---|---|
+| `event_ts` | `TIMESTAMP` |
+| `store_id` | `INT` |
+| `operation_type` | `STRING` |
+| `price_paid_kop` | `BIGINT` |
+
+Откуда берётся:
+
+```python
+spark.createDataFrame([Row(store_id=1, city="Пермь")])     # из списка
+spark.createDataFrame(pandas_df)                            # из pandas
+spark.read.csv("hdfs://namenode:9000/raw/sample/sales.csv") # из файлов
+spark.table("iceberg.retail.stores")                        # из таблицы
+```
+
+---
+
+<!-- _class: theory -->
+
+## Что происходит в `spark.read.csv(...)`
+
+1. **Список файлов** по пути. Нет файла или прав — ошибка сразу
+2. **Схема**: из заголовка и `schema=...` или, с `inferSchema=True`, Spark **прочитает
+   весь файл**, чтобы угадать типы — это отдельное задание на кластере
+3. Возвращается DataFrame: **ссылка на данные + схема**. Самих данных в нём нет
+
+```python
+SCHEMA = "event_id BIGINT, event_ts TIMESTAMP, store_id INT, price_paid_kop BIGINT, ..."
+sales = spark.read.csv(path, header=True, schema=SCHEMA)
+```
+
+Схему задают явно: угадывание дорогое и ошибается — `customer_id` окажется `int`, а номера перерастут его через год.
+
+---
+
+<!-- _class: theory -->
+
+## Transformations и actions
+
+| вид | примеры | что делает |
+|---|---|---|
+| **transformation** | `select`, `withColumn`, `filter`, `groupBy().agg()`, `join`, `orderBy` | возвращает **новый DataFrame** — описание вычисления |
+| **action** | `show`, `count`, `collect`, `toPandas`, `write` | строит план и **выполняет** его на кластере |
+
+```python
+revenue = (sales.filter(F.col("operation_type") == "SALE")      # мгновенно
+                .withColumn("price_rub", F.col("price_paid_kop") / 100)
+                .groupBy("store_id").agg(F.sum("price_rub")))    # мгновенно
+revenue.show()                                                   # вот здесь работа
+```
+
+---
+
+<!-- _class: theory -->
+
+## Ленивые вычисления
+
+![w:1020](img/lazy.svg)
+
+Зная цепочку **целиком**, Spark выбрасывает лишнее ещё до чтения данных и не хранит
+промежуточные таблицы.
+
+---
+
+<!-- _class: theory -->
+
+## От кода к плану
+
+![w:940](img/plan.svg)
+
+Python только **описывает** вычисление, считает JVM. Поэтому встроенные функции `F.*` быстрые, а свой код на Python (UDF) медленнее: строки гоняются между JVM и Python.
+
+---
+
+<!-- _class: theory -->
+
+## Как читать `explain()`
+
+```text
+HashAggregate(keys=[region], functions=[sum(price_rub)])                  ← 4. итоговые суммы
++- Exchange hashpartitioning(region, 8)                                   ← 3. shuffle: граница стадий
+   +- HashAggregate(keys=[region], functions=[partial_sum(price_rub)])    ← 2. частичные суммы
+      +- BroadcastHashJoin [store_id], [store_id], Inner                  ← справочник — копией на все executor'ы
+         :- Filter (operation_type = SALE) AND (price_paid_kop >= 0)
+         :  +- FileScan csv [store_id, operation_type, price_paid_kop]    ← 1. читаются только 3 колонки
+         :        PushedFilters: [EqualTo(operation_type,SALE), ...]      ←    фильтр уже при чтении
+         +- BroadcastExchange
+            +- FileScan csv [store_id, region]
+```
+
+* Читается **снизу вверх**: от чтения файлов к результату
+* `explain(True)` показывает все этапы: parsed → analyzed → optimized → physical
+* `Exchange` = **shuffle** = новая стадия. Чем их меньше, тем быстрее запрос
+
+---
+
+<!-- _class: theory -->
+
+## Партиции, задачи, стадии
+
+![w:940](img/stages.svg)
+
+CSV и Parquet режутся на куски (**splittable**), а сжатый `.csv.gz` — нет: один файл = одна задача.
+
+---
+
+<!-- _class: theory -->
+
+## Spark UI: где это увидеть
+
+http://localhost:4040 — пока открыта сессия ноутбука (вторая сессия — :4041).
+
+| вкладка | что там |
+|---|---|
+| **Jobs** | задания: каждое action — одно или несколько заданий |
+| **Stages** | стадии: число задач, время, объём shuffle |
+| **SQL / DataFrame** | план запроса с числом строк на каждом шаге |
+| **Executors** | executor'ы на воркерах, память, упавшие задачи |
+
+Строка прогресса в ноутбуке `[Stage 12:=====>  (3 + 4) / 7]`: в стадии 7 задач,
+3 готовы, 4 выполняются — по одной на каждое ядро кластера.
+
+---
+
+<!-- _class: theory -->
+
+## Ошибки Spark: как читать
+
+Ошибка из Python — это `Py4JJavaError` с длинным Java-стектрейсом.
+
+* Ищите строки **`Caused by:`** — настоящая причина обычно в последней из них
+* `AnalysisException` — ошибка в коде: нет колонки, неверный тип. Появляется сразу
+* Ошибка **при action** — в данных или в ресурсах: смотрите лог задачи в Spark UI
+* `Lost task` и повтор — Spark **перезапускает упавшие задачи**. Что задача успела записать наружу, может записаться дважды (занятие 2)
+* Executor завершился с кодом **137** или **143** — его убили снаружи, чаще всего за превышение памяти
+
+---
+
 <!-- _class: practice -->
 
-## Шаг 6. JupyterLab и `demo.ipynb`
+## Шаг 6. Данные для практики — в HDFS
 
-1. Запустить тестовый ноутбук **из корня репозитория**:
-   `jupyter lab`
-2. Открыть `notebooks/demo.ipynb` и выполнить ячейки сверху вниз
-3. Последняя ячейка — `spark.stop()`: без неё ядра кластера остаются занятыми
+Выборка по сквозной теме курса — один день операций касс сети магазинов (~38 тыс.
+строк) и справочники — уже лежит в репозитории, в `data/sample/`.
 
-Запускать именно из корня репозитория: в `demo.ipynb` путь к `get_spark()` записан
-относительно него, как `../host`.
+Executor'ы читают файлы из HDFS, поэтому кладём выборку туда. Из корня репозитория:
+
+```bash
+docker compose exec namenode hdfs dfs -mkdir -p /raw
+docker compose exec namenode hdfs dfs -put -f /data/sample /raw/
+docker compose exec namenode hdfs dfs -ls /raw/sample
+```
+
+**Ожидаемый результат:** четыре файла — `sales.csv`, `stores.csv`, `categories.csv`,
+`products.csv`. Их же видно в http://localhost:9870 → *Browse the file system* → `/raw/sample`.
+
+---
+
+<!-- _class: practice -->
+
+## Шаг 7. Ноутбук `lab-01-spark.ipynb`
+
+1. `jupyter lab` **из корня репозитория** → `notebooks/lab-01-spark.ipynb`
+2. Выполнить разделы 0–7 по порядку: от чтения CSV до записи в Iceberg
+3. Держать открытым http://localhost:4040 и смотреть, какие ячейки создают задания
+4. Задания 1–4 в конце ноутбука — самостоятельно: оплаты, категории, скидки, чтение плана
+5. Последняя ячейка — `spark.stop()`: без неё ядра кластера остаются занятыми
 
 ---
 ## Итоги занятия
 
-* **HDFS** хранит файлы блоками на DataNode'ах, а NameNode знает, где эти блоки;
-  файл пишется один раз и не меняется на месте
+* **HDFS** хранит файлы блоками на DataNode'ах; файл пишется один раз и не меняется на месте
 * **Iceberg** — слой метаданных над этими файлами: транзакции, история, эволюция схемы
-* Стенд — это **три независимых слоя**: HDFS (данные), Hive Metastore (каталог),
-  Spark (вычисления); Airflow добавляет расписание, Postgres — витрину
+* Стенд — **три независимых слоя**: HDFS (данные), Hive Metastore (каталог), Spark (вычисления)
 * Driver PySpark работает **на вашей машине**, вычисления уходят в контейнеры
+* DataFrame — **описание** вычисления: transformations ничего не считают, **action** запускает план целиком
+* Spark **оптимизирует** план: фильтры и выбор колонок уходят в чтение
+* Партиция = задача, **shuffle** (`Exchange`) = граница стадий — видно в `explain()` и Spark UI

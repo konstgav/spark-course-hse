@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="420" viewBox="0 0 1080 420" role="img"
+     aria-label="Pandas выполняет каждую операцию сразу и хранит промежуточные таблицы; Spark копит цепочку преобразований и выполняет её целиком при вызове action">
+  <style>
+    .lbl  { font: 700 12.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; letter-spacing: 1.6px; }
+    .op   { font: 600 13px "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace; }
+    .sub  { font: 400 12px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #5b657a; }
+    .ttl  { font: 600 14.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #0f2d69; }
+    .edge { fill: none; stroke: #2b4a8b; stroke-width: 2; }
+    .edgeh{ fill: none; stroke: #c0272d; stroke-width: 2; }
+    .grid { stroke: #e8a9af; stroke-width: 1.2; }
+    .gridb{ stroke: #9dbde8; stroke-width: 1.2; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#2b4a8b"/>
+    </marker>
+    <marker id="h" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#c0272d"/>
+    </marker>
+    <!-- таблица в памяти -->
+    <g id="tbl">
+      <rect x="0" y="0" width="96" height="58" rx="5" fill="#ffffff" stroke="#c0272d" stroke-width="1.6"/>
+      <rect x="0" y="0" width="96" height="14" rx="5" fill="#fcebec"/>
+      <line class="grid" x1="0" y1="14" x2="96" y2="14"/>
+      <line class="grid" x1="0" y1="29" x2="96" y2="29"/>
+      <line class="grid" x1="0" y1="44" x2="96" y2="44"/>
+      <line class="grid" x1="32" y1="0" x2="32" y2="58"/>
+      <line class="grid" x1="64" y1="0" x2="64" y2="58"/>
+    </g>
+  </defs>
+
+  <!-- ================= PANDAS ================= -->
+  <text class="lbl" x="18" y="34" fill="#c0272d">PANDAS: КАЖДАЯ ОПЕРАЦИЯ ВЫПОЛНЯЕТСЯ СРАЗУ</text>
+  <rect x="16" y="46" width="1048" height="150" rx="12" fill="#fff8f8" stroke="#c0272d" stroke-width="1.8" stroke-dasharray="7 5"/>
+
+  <use href="#tbl" x="40"  y="78"/>
+  <use href="#tbl" x="252" y="78"/>
+  <use href="#tbl" x="464" y="78"/>
+  <use href="#tbl" x="676" y="78"/>
+  <use href="#tbl" x="888" y="78"/>
+
+  <path class="edgeh" d="M140 107 H246" marker-end="url(#h)"/>
+  <path class="edgeh" d="M352 107 H458" marker-end="url(#h)"/>
+  <path class="edgeh" d="M564 107 H670" marker-end="url(#h)"/>
+  <path class="edgeh" d="M776 107 H882" marker-end="url(#h)"/>
+
+  <text class="op" x="193" y="97" text-anchor="middle" fill="#c0272d">filter</text>
+  <text class="op" x="405" y="97" text-anchor="middle" fill="#c0272d">assign</text>
+  <text class="op" x="617" y="97" text-anchor="middle" fill="#c0272d">groupby</text>
+  <text class="op" x="829" y="97" text-anchor="middle" fill="#c0272d">sum</text>
+
+  <text class="sub" x="88"  y="158" text-anchor="middle">read_csv</text>
+  <text class="sub" x="540" y="178" text-anchor="middle">каждый шаг читает и пишет всю таблицу; все промежуточные результаты лежат в памяти одной машины</text>
+
+  <!-- ================= SPARK ================= -->
+  <text class="lbl" x="18" y="236" fill="#0f2d69">SPARK: ЦЕПОЧКА КОПИТСЯ, ВЫПОЛНЯЕТСЯ ПРИ ACTION</text>
+  <rect x="16" y="248" width="1048" height="156" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
+
+  <!-- описание вычисления: пунктирная рамка вокруг transformations -->
+  <rect x="32" y="270" width="570" height="84" rx="10" fill="none" stroke="#7fa3d6" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text class="sub" x="44" y="290">transformations — только описание, данные не читаются</text>
+
+  <rect x="44"  y="302" width="112" height="38" rx="7" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="184" y="302" width="112" height="38" rx="7" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="324" y="302" width="124" height="38" rx="7" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="476" y="302" width="116" height="38" rx="7" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <text class="op" x="100" y="326" text-anchor="middle" fill="#0f2d69">read.csv</text>
+  <text class="op" x="240" y="326" text-anchor="middle" fill="#0f2d69">filter</text>
+  <text class="op" x="386" y="326" text-anchor="middle" fill="#0f2d69">withColumn</text>
+  <text class="op" x="534" y="326" text-anchor="middle" fill="#0f2d69">groupBy.agg</text>
+  <path class="edge" d="M156 321 H180" marker-end="url(#a)"/>
+  <path class="edge" d="M296 321 H320" marker-end="url(#a)"/>
+  <path class="edge" d="M448 321 H472" marker-end="url(#a)"/>
+
+  <!-- action -->
+  <path class="edge" d="M602 312 H660" marker-end="url(#a)"/>
+  <text class="op" x="631" y="302" text-anchor="middle" fill="#c0272d">show()</text>
+  <text class="sub" x="631" y="336" text-anchor="middle">action</text>
+
+  <rect x="666" y="284" width="206" height="64" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="666" y="285" width="4"   height="62" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="684" y="309">план целиком</text>
+  <text class="sub" x="684" y="327">оптимизация, затем задачи</text>
+  <text class="sub" x="684" y="342">на executor'ах кластера</text>
+
+  <path class="edge" d="M872 316 H906" marker-end="url(#a)"/>
+  <g transform="translate(912 290)">
+    <rect x="0" y="0" width="96" height="58" rx="5" fill="#ffffff" stroke="#0f2d69" stroke-width="1.6"/>
+    <rect x="0" y="0" width="96" height="14" rx="5" fill="#e7effb"/>
+    <line class="gridb" x1="0" y1="14" x2="96" y2="14"/>
+    <line class="gridb" x1="0" y1="29" x2="96" y2="29"/>
+    <line class="gridb" x1="0" y1="44" x2="96" y2="44"/>
+    <line class="gridb" x1="32" y1="0" x2="32" y2="58"/>
+    <line class="gridb" x1="64" y1="0" x2="64" y2="58"/>
+  </g>
+  <text class="sub" x="960" y="370" text-anchor="middle">результат</text>
+  <text class="sub" x="312" y="384" text-anchor="middle">фильтр и выбор колонок уходят в чтение файла — лишние данные не читаются вовсе</text>
+</svg>

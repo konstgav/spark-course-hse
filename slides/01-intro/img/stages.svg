@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="420" viewBox="0 0 1080 420" role="img"
+     aria-label="Файл делится на куски, каждый кусок обрабатывает своя задача первой стадии; после shuffle задачи второй стадии складывают частичные суммы по регионам">
+  <style>
+    .lbl  { font: 700 12.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; letter-spacing: 1.6px; }
+    .ttl  { font: 600 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #0f2d69; }
+    .ttlh { font: 600 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #c0272d; }
+    .sub  { font: 400 12px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #5b657a; }
+    .wire { font: 600 12px "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace; fill: #2b4a8b; }
+    .edge { fill: none; stroke: #2b4a8b; stroke-width: 2; }
+    .shuf { fill: none; stroke: #7fa3d6; stroke-width: 1.6; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#2b4a8b"/>
+    </marker>
+    <marker id="b" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#7fa3d6"/>
+    </marker>
+  </defs>
+
+  <!-- ================= файл ================= -->
+  <text class="lbl" x="18" y="34" fill="#c0272d">ФАЙЛ</text>
+  <rect x="16" y="46" width="130" height="300" rx="12" fill="#fff8f8" stroke="#c0272d" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <text class="ttlh" x="81" y="74" text-anchor="middle">sales.csv</text>
+  <rect x="30" y="92"  width="102" height="46" rx="6" fill="#fcebec" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="156" width="102" height="46" rx="6" fill="#fcebec" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="220" width="102" height="46" rx="6" fill="#fcebec" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="284" width="102" height="46" rx="6" fill="#fcebec" stroke="#e8a9af" stroke-width="1.4"/>
+  <text class="sub" x="81" y="120" text-anchor="middle">кусок 1</text>
+  <text class="sub" x="81" y="184" text-anchor="middle">кусок 2</text>
+  <text class="sub" x="81" y="248" text-anchor="middle">кусок 3</text>
+  <text class="sub" x="81" y="312" text-anchor="middle">кусок 4</text>
+
+  <!-- ================= стадия 1 ================= -->
+  <text class="lbl" x="182" y="34" fill="#0f2d69">СТАДИЯ 1 · УЗКИЕ ОПЕРАЦИИ</text>
+  <rect x="180" y="46" width="336" height="300" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <rect x="200" y="92"  width="296" height="46" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="200" y="156" width="296" height="46" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="200" y="220" width="296" height="46" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="200" y="284" width="296" height="46" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="200" y="93"  width="4" height="44" rx="2" fill="#0f2d69"/>
+  <rect x="200" y="157" width="4" height="44" rx="2" fill="#0f2d69"/>
+  <rect x="200" y="221" width="4" height="44" rx="2" fill="#0f2d69"/>
+  <rect x="200" y="285" width="4" height="44" rx="2" fill="#0f2d69"/>
+  <path class="edge" d="M132 115 H196" marker-end="url(#a)"/>
+  <path class="edge" d="M132 179 H196" marker-end="url(#a)"/>
+  <path class="edge" d="M132 243 H196" marker-end="url(#a)"/>
+  <path class="edge" d="M132 307 H196" marker-end="url(#a)"/>
+
+  <text class="ttl" x="216" y="113">задача 1</text>
+  <text class="ttl" x="216" y="177">задача 2</text>
+  <text class="ttl" x="216" y="241">задача 3</text>
+  <text class="ttl" x="216" y="305">задача 4</text>
+  <text class="sub" x="216" y="129">чтение → filter → join → частичные суммы</text>
+  <text class="sub" x="216" y="193">чтение → filter → join → частичные суммы</text>
+  <text class="sub" x="216" y="257">чтение → filter → join → частичные суммы</text>
+  <text class="sub" x="216" y="321">чтение → filter → join → частичные суммы</text>
+
+  <!-- ================= shuffle ================= -->
+  <text class="wire" x="610" y="72" text-anchor="middle">Exchange</text>
+  <text class="sub"  x="610" y="88" text-anchor="middle">shuffle</text>
+  <path class="shuf" d="M496 115 C560 115 600 145 664 145" marker-end="url(#b)"/>
+  <path class="shuf" d="M496 115 C560 115 600 267 664 267" marker-end="url(#b)"/>
+  <path class="shuf" d="M496 179 C560 179 600 145 664 145" marker-end="url(#b)"/>
+  <path class="shuf" d="M496 179 C560 179 600 267 664 267" marker-end="url(#b)"/>
+  <path class="shuf" d="M496 243 C560 243 600 145 664 145" marker-end="url(#b)"/>
+  <path class="shuf" d="M496 243 C560 243 600 267 664 267" marker-end="url(#b)"/>
+  <path class="shuf" d="M496 307 C560 307 600 145 664 145" marker-end="url(#b)"/>
+  <path class="shuf" d="M496 307 C560 307 600 267 664 267" marker-end="url(#b)"/>
+
+  <!-- ================= стадия 2 ================= -->
+  <text class="lbl" x="652" y="34" fill="#0f2d69">СТАДИЯ 2</text>
+  <rect x="650" y="46" width="250" height="300" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <rect x="670" y="112" width="210" height="68" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="670" y="234" width="210" height="68" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="670" y="113" width="4" height="66" rx="2" fill="#0f2d69"/>
+  <rect x="670" y="235" width="4" height="66" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="686" y="135">задача 5</text>
+  <text class="sub" x="686" y="154">итог для одной половины</text>
+  <text class="sub" x="686" y="169">регионов</text>
+  <text class="ttl" x="686" y="257">задача 6</text>
+  <text class="sub" x="686" y="276">итог для другой половины</text>
+  <text class="sub" x="686" y="291">регионов</text>
+
+  <path class="edge" d="M880 145 C910 145 910 196 934 196" marker-end="url(#a)"/>
+  <path class="edge" d="M880 267 C910 267 910 216 934 216" marker-end="url(#a)"/>
+
+  <!-- ================= результат ================= -->
+  <g transform="translate(940 176)">
+    <rect x="0" y="0" width="112" height="60" rx="5" fill="#ffffff" stroke="#0f2d69" stroke-width="1.6"/>
+    <rect x="0" y="0" width="112" height="15" rx="5" fill="#e7effb"/>
+    <line x1="0" y1="15" x2="112" y2="15" stroke="#9dbde8" stroke-width="1.2"/>
+    <line x1="0" y1="30" x2="112" y2="30" stroke="#9dbde8" stroke-width="1.2"/>
+    <line x1="0" y1="45" x2="112" y2="45" stroke="#9dbde8" stroke-width="1.2"/>
+    <line x1="56" y1="0" x2="56" y2="60" stroke="#9dbde8" stroke-width="1.2"/>
+  </g>
+  <text class="sub" x="996" y="256" text-anchor="middle">выручка</text>
+  <text class="sub" x="996" y="272" text-anchor="middle">по регионам</text>
+
+  <text class="sub" x="540" y="378" text-anchor="middle">одна партиция — одна задача. Граница стадий проходит там, где строки пересылаются между executor'ами:</text>
+  <text class="sub" x="540" y="396" text-anchor="middle">groupBy, join больших таблиц, orderBy, оконные функции. В плане это Exchange.</text>
+</svg>

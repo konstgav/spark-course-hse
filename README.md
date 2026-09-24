@@ -230,7 +230,7 @@ cd host && python smoke_test.py
 `OK: стенд работает`. Файлы таблицы видны в http://localhost:9870 →
 *Utilities → Browse the file system* → `/warehouse/demo.db/hello`.
 
-## 4. JupyterLab и demo.ipynb
+## 4. JupyterLab и ноутбук первого занятия
 
 ```bash
 conda activate spark-course
@@ -238,11 +238,22 @@ jupyter lab
 ```
 
 JupyterLab откроется в браузере на http://localhost:8888. Запускайте его **из корня
-репозитория**: в `notebooks/demo.ipynb` путь к `get_spark()` записан как `../host`.
+репозитория**: в ноутбуках `notebooks/` путь к `get_spark()` записан как `../host`.
 
-Откройте [notebooks/demo.ipynb](notebooks/demo.ipynb) и выполните ячейки сверху вниз — это
-тот же сценарий, что и в smoke-тесте, но по шагам и с выводом на экран. Последняя ячейка
-`spark.stop()` обязательна: без неё приложение продолжает держать ядра кластера.
+Цель первого занятия — развернуть стенд и научиться работать со Spark DataFrame API:
+создавать и читать DataFrame, преобразовывать их (`withColumn`, `filter`, `groupBy`, `join`,
+`orderBy`, `toPandas`), понимать ленивые вычисления, читать план запроса (`explain`) и видеть
+партиции, задачи и стадии в Spark UI. Практика — в
+[notebooks/lab-01-spark.ipynb](notebooks/lab-01-spark.ipynb) на выборке данных курса за один день.
+Перед запуском положите выборку в HDFS:
+
+```bash
+docker compose exec namenode hdfs dfs -mkdir -p /raw
+docker compose exec namenode hdfs dfs -put -f /data/sample /raw/
+```
+
+Выполняйте ячейки сверху вниз. Последняя ячейка `spark.stop()` обязательна: без неё
+приложение продолжает держать ядра кластера.
 
 ### Как это устроено
 
@@ -332,8 +343,9 @@ docker compose up -d metabase
 
 ## 7. Данные курса: розничная сеть
 
-Практика занятий 2–3 строится на синтетических данных сети магазинов. Кассы каждый час
-присылают CSV с продажами, отменами и возвратами. Поля, типы операций, дефекты источника
+Практика всех занятий строится на синтетических данных сети магазинов. Кассы каждый час
+присылают CSV с продажами, отменами и возвратами. На занятии 1 — готовая выборка за один день
+(`data/sample/`, хранится в git), на занятиях 2–3 — полный набор из генератора. Поля, типы операций, дефекты источника
 и формулы метрик описаны в [docs/retail-data.md](docs/retail-data.md).
 
 ```bash
@@ -352,11 +364,11 @@ python generator/generate_retail.py --scale 0.1   # то же в 10 раз ме�
    в [notebooks/lab-03-analytics.ipynb](notebooks/lab-03-analytics.ipynb). Пример витрины в DAG —
    `retail_mart_daily_revenue`.
 
-| занятие | слайды | ноутбук |
-|---|---|---|
-| 1. Стенд | [slides/01-intro](slides/01-intro/slides.md) | [notebooks/demo.ipynb](notebooks/demo.ipynb) |
-| 2. Загрузка: bronze и silver | [slides/02-ingest](slides/02-ingest/slides.md) | [lab-02-bronze-silver.ipynb](notebooks/lab-02-bronze-silver.ipynb) |
-| 3. Аналитика и витрины | [slides/03-analytics](slides/03-analytics/slides.md) | [lab-03-analytics.ipynb](notebooks/lab-03-analytics.ipynb) |
+| занятие | цель | слайды | ноутбук |
+|---|---|---|---|
+| 1. Стенд и Spark DataFrame API | развернуть стенд; освоить операции над DataFrame, ленивые вычисления, план запроса, партиции и стадии | [slides/01-intro](slides/01-intro/slides.md) | [lab-01-spark.ipynb](notebooks/lab-01-spark.ipynb) |
+| 2. Загрузка: bronze и silver | почасовая загрузка CSV через Airflow, очистка и `MERGE INTO` в Iceberg | [slides/02-ingest](slides/02-ingest/slides.md) | [lab-02-bronze-silver.ipynb](notebooks/lab-02-bronze-silver.ipynb) |
+| 3. Аналитика и витрины | витрины в Postgres, DAG для витрины, дашборд в Metabase | [slides/03-analytics](slides/03-analytics/slides.md) | [lab-03-analytics.ipynb](notebooks/lab-03-analytics.ipynb) |
 
 ## Остановка и сброс
 
@@ -483,10 +495,11 @@ iceberg-course-infra/
 │   └── retail_*.py               # справочники, почасовая загрузка bronze, пример витрины
 ├── jobs/                         # PySpark-скрипты (/opt/jobs в Spark и Airflow)
 │   └── retail/                   # скрипты для DAG'ов retail_*
-├── generator/generate_retail.py  # генератор данных розничной сети
+├── generator/                    # генератор данных розничной сети и выборки для занятия 1
 ├── docs/retail-data.md           # описание данных курса
-├── notebooks/                    # demo и ноутбуки занятий (с пропусками для студентов)
+├── notebooks/                    # ноутбуки занятий lab-01..03 (с пропусками для студентов)
 ├── slides/                       # слайды занятий (Marp)
 ├── data/                         # сырые файлы (/data в namenode, /opt/data в Spark и Airflow)
+│   └── sample/                   # выборка для занятия 1 (в git, остальное в data/ — нет)
 └── logs/                         # логи Airflow
 ```

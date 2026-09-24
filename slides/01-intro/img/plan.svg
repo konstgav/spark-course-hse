@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="410" viewBox="0 0 1080 410" role="img"
+     aria-label="Код на Python через Py4J передаётся driver'у Spark, который строит логический план, проверяет его, оптимизирует и превращает в физический; при action задачи уходят на executor'ы в контейнерах">
+  <style>
+    .lbl  { font: 700 12.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; letter-spacing: 1.6px; }
+    .ttl  { font: 600 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #0f2d69; }
+    .ttlh { font: 600 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #c0272d; }
+    .sub  { font: 400 12px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #5b657a; }
+    .wire { font: 600 12px "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace; fill: #2b4a8b; }
+    .edge { fill: none; stroke: #2b4a8b; stroke-width: 2; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#2b4a8b"/>
+    </marker>
+  </defs>
+
+  <!-- ================= Python ================= -->
+  <text class="lbl" x="18" y="34" fill="#c0272d">PYTHON</text>
+  <rect x="16" y="46" width="190" height="190" rx="12" fill="#fff8f8" stroke="#c0272d" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <rect x="30" y="100" width="162" height="82" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="101" width="4"   height="80" rx="2" fill="#c0272d"/>
+  <text class="ttlh" x="46" y="126">ваш код</text>
+  <text class="sub"  x="46" y="146">DataFrame API</text>
+  <text class="sub"  x="46" y="163">или spark.sql(...)</text>
+
+  <path class="edge" d="M206 141 H246" marker-end="url(#a)"/>
+  <text class="wire" x="226" y="131" text-anchor="middle">Py4J</text>
+
+  <!-- ================= DRIVER ================= -->
+  <text class="lbl" x="252" y="34" fill="#0f2d69">DRIVER · JVM НА ВАШЕЙ МАШИНЕ</text>
+  <rect x="250" y="46" width="814" height="190" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
+
+  <rect x="266" y="100" width="180" height="82" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="266" y="101" width="4"   height="80" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="282" y="126">1. Логический план</text>
+  <text class="sub" x="282" y="146">цепочка операций</text>
+  <text class="sub" x="282" y="163">как вы её написали</text>
+
+  <rect x="466" y="100" width="180" height="82" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="466" y="101" width="4"   height="80" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="482" y="126">2. Анализ</text>
+  <text class="sub" x="482" y="146">колонки и типы по схеме:</text>
+  <text class="sub" x="482" y="163">ошибка — сразу</text>
+
+  <rect x="666" y="100" width="180" height="82" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="666" y="101" width="4"   height="80" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="682" y="126">3. Оптимизация</text>
+  <text class="sub" x="682" y="146">Catalyst: фильтры и</text>
+  <text class="sub" x="682" y="163">колонки — в чтение</text>
+
+  <rect x="866" y="100" width="182" height="82" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="866" y="101" width="4"   height="80" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="882" y="126">4. Физический план</text>
+  <text class="sub" x="882" y="146">алгоритмы join,</text>
+  <text class="sub" x="882" y="163">Exchange, стадии</text>
+
+  <path class="edge" d="M446 141 H462" marker-end="url(#a)"/>
+  <path class="edge" d="M646 141 H662" marker-end="url(#a)"/>
+  <path class="edge" d="M846 141 H862" marker-end="url(#a)"/>
+
+  <text class="sub" x="657" y="214" text-anchor="middle">transformations доходят до шага 2; шаги 3-4 и выполнение запускает action</text>
+
+  <!-- ================= EXECUTORS ================= -->
+  <path class="edge" d="M957 182 V282" marker-end="url(#a)"/>
+  <text class="wire" x="966" y="256">action</text>
+
+  <text class="lbl" x="252" y="274" fill="#0f2d69">EXECUTOR'Ы · КОНТЕЙНЕРЫ SPARK-WORKER</text>
+  <rect x="250" y="286" width="814" height="108" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <text class="sub" x="268" y="330">задача = партиция данных + код стадии;</text>
+  <text class="sub" x="268" y="348">задачи одной стадии идут параллельно,</text>
+  <text class="sub" x="268" y="366">по одной на ядро (у нас 4 ядра)</text>
+
+  <rect x="566" y="316" width="104" height="48" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="686" y="316" width="104" height="48" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="806" y="316" width="104" height="48" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="926" y="316" width="104" height="48" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <text class="ttl" x="618" y="345" text-anchor="middle">задача 1</text>
+  <text class="ttl" x="738" y="345" text-anchor="middle">задача 2</text>
+  <text class="ttl" x="858" y="345" text-anchor="middle">задача 3</text>
+  <text class="ttl" x="978" y="345" text-anchor="middle">задача 4</text>
+</svg>
