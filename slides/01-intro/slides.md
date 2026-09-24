@@ -200,13 +200,14 @@ spark.stop()
 
 ## Кластер у каждого свой — и он небольшой
 
-* Весь стенд работает **на вашей машине**: два воркера по 2 ядра, всего **4 ядра**
-* Одно приложение по умолчанию забирает **2 ядра**, поэтому одновременно живут
-  две сессии: например, ноутбук и DAG в Airflow. Третья будет ждать в очереди
-* Закончили работу — **`spark.stop()`**: иначе ядра держатся до перезапуска ядра ноутбука
+* Весь стенд работает **на вашей машине**: два воркера по 2 ядра и 2 ГБ, всего **4 ядра**
+* Одно приложение по умолчанию забирает **весь кластер**: 2 executor'а по 2 ядра и 2 ГБ.
+  Вторая сессия (другой ноутбук или DAG в Airflow) ждёт в очереди, пока первая не завершится
+* Закончили работу — **`spark.stop()`**: иначе кластер занят до перезапуска ядра ноутбука
 * Кто сейчас занимает ваш кластер, видно на http://localhost:8090
-* В простое стенд занимает около **3 ГБ** оперативной памяти, каждый executor — ещё
-  примерно 1.4 ГБ. Отсюда требование 8 ГБ RAM и привычка закрывать лишние сессии
+* В простое стенд занимает около **4 ГБ** оперативной памяти (из них ~1 ГБ — Metabase),
+  каждый executor — ещё примерно 2.4 ГБ. Отсюда требование 16 ГБ RAM и привычка
+  закрывать лишние сессии
 * Записываете в Postgres — в URL пишите `postgres:5433`, а не `localhost`:
   подключается **executor** внутри сети Docker, а не ваш ноутбук
 * Читаете свой файл — сначала положите его в HDFS: executor'ы не видят диск хоста
@@ -232,7 +233,7 @@ spark.stop()
 
 1. Docker Desktop → Settings → Resources → Advanced → **Disk image location** →
    указать `D:\DockerData` → Apply & restart
-2. Создать каталоги и перенести туда TEMP и кэш pip — в него распаковываются колёса,
+2. Создать каталоги и перенести туда TEMP и кэш pip — в него распаковываются wheels-пакеты,
    один `pyspark` больше 300 МБ:
    `New-Item -ItemType Directory -Force D:\temp, D:\pip-cache`
    `setx TEMP D:\temp` · `setx TMP D:\temp` · `setx PIP_CACHE_DIR D:\pip-cache`
@@ -250,7 +251,8 @@ Linux и macOS этот шаг пропускают.
    администратора), на Linux и macOS — в `/etc/hosts`:
    `127.0.0.1 namenode datanode hive-metastore postgres`
 2. Windows — поставить winutils, без него Hadoop на Windows не стартует:
-   `powershell -ExecutionPolicy Bypass -File host\install_winutils.ps1`
+   `cd spark-course-hse`
+   `powershell -ExecutionPolicy Bypass -File host\install_winutils.ps1 -Prefix D:/hadoop`
 3. Linux с включённым `ufw`: `sudo ufw allow from 172.28.0.0/24`
 
 Имена контейнеров сохраняются внутри metastore, поэтому должны резолвиться одинаково
@@ -280,7 +282,7 @@ Linux и macOS этот шаг пропускают.
 
 ## Шаг 4. Поднять стенд
 
-1. Перейти в каталог репозитория: `cd iceberg-course-infra`
+1. Перейти в каталог репозитория: `cd spark-course-hse`
 2. Собрать и запустить: `docker compose up -d --build`
 3. Проверить состояние: `docker compose ps -a`
 
@@ -297,8 +299,8 @@ Linux и macOS этот шаг пропускают.
 ## Шаг 5. Проверить стенд с хоста
 
 ```bash
-conda activate spark-course
-cd host && python smoke_test.py
+cd host
+python smoke_test.py
 ```
 
 Скрипт по порядку проверяет hosts-файл, запись и чтение Iceberg-таблицы в HDFS,
@@ -315,8 +317,8 @@ cd host && python smoke_test.py
 
 ## Шаг 6. JupyterLab и `demo.ipynb`
 
-1. Запустить лабу **из корня репозитория**:
-   `conda activate spark-course`, затем `jupyter lab`
+1. Запустить тестовый ноутбук **из корня репозитория**:
+   `jupyter lab`
 2. Открыть `notebooks/demo.ipynb` и выполнить ячейки сверху вниз
 3. Последняя ячейка — `spark.stop()`: без неё ядра кластера остаются занятыми
 

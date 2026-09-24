@@ -48,9 +48,9 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 ## Требования
 
 * Docker Engine 24+ с Compose v2 (Linux) или Docker Desktop (Mac/Windows):
-  **не меньше 8 GB RAM, 4 CPU и 20 GB на диске** (образы Docker ~10 GB, окружение conda
+  **не меньше 16 GB RAM, 4 CPU и 20 GB на диске** (образы Docker ~10 GB, окружение conda
   с кэшами ещё 8–10 GB). Стенд в простое занимает около 4 GB
-  (из них ~1 GB — Metabase), каждый executor добавляет примерно 1.4 GB.
+  (из них ~1 GB — Metabase), каждый executor добавляет примерно 2.4 GB.
 * Свободные порты: 3000, 4040, 5433, 7077–7079, 8080–8082, 8090, 9000, 9083, 9864, 9866, 9870.
 * На Apple Silicon образы `bde2020/*` (HDFS, Hive) работают через эмуляцию amd64 —
   медленнее, но работают.
@@ -252,7 +252,7 @@ import sys
 sys.path.append("/путь/к/iceberg-course-infra/host")
 from spark_session import get_spark
 
-spark = get_spark("lab-01")          # 2 executor'а по 1 ядру/1g — по одному на каждом воркере
+spark = get_spark("lab-01")          # 2 executor'а по 2 ядра/2g — по одному на каждом воркере
 
 spark.sql("CREATE NAMESPACE IF NOT EXISTS iceberg.demo")
 spark.sql("CREATE TABLE IF NOT EXISTS iceberg.demo.t (id BIGINT, name STRING) USING iceberg")
@@ -268,8 +268,8 @@ driver'а, jar-пакеты, каталог `iceberg`, HDFS и ресурсы. �
 
 Что важно знать:
 
-* **Одно приложение занимает 2 ядра из 4.** Два открытых ноутбука (или ноутбук и DAG)
-  работают одновременно, третий ждёт ресурсов. Неиспользуемые сессии закрывайте
+* **Одно приложение занимает все 4 ядра кластера.** Второй открытый ноутбук (или DAG)
+  ждёт ресурсов, пока первое приложение не завершится. Неиспользуемые сессии закрывайте
   через `spark.stop()`, занятость видна на http://localhost:8090.
 * **Запись в Postgres** выполняют executor'ы, поэтому в JDBC URL указывайте имя `postgres`,
   а не `localhost`: `jdbc:postgresql://postgres:5433/dwh`.

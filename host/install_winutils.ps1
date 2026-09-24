@@ -63,6 +63,3 @@ if ($LASTEXITCODE -ne 0) { Write-Warning "winutils.exe ls завершилась
 
 Write-Host ""
 Write-Host "Готово: HADOOP_HOME = $Prefix"
-Write-Host "Откройте новое окно PowerShell и выполните:"
-Write-Host "    conda activate spark-course"
-Write-Host "    cd host; python smoke_test.py"

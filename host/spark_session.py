@@ -82,9 +82,9 @@ HOST_SPARK_CONF = {
 
     # --- ресурсы: 2 executor'а (по одному на воркер) --------------------------
     "spark.driver.memory": "2g",
-    "spark.executor.memory": "1g",
-    "spark.executor.cores": "1",
-    "spark.cores.max": "2",
+    "spark.executor.memory": "2g",
+    "spark.executor.cores": "2",
+    "spark.cores.max": "4",
     "spark.sql.shuffle.partitions": "8",
 
     "spark.sql.execution.arrow.pyspark.enabled": "true",

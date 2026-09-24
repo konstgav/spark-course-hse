@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="462" viewBox="0 0 1080 462" role="img"
-     aria-label="Схема учебного стенда: PySpark driver на хост-машине подключается к Spark, Hive Metastore и HDFS в контейнерах Docker">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="486" viewBox="0 0 1080 486" role="img"
+     aria-label="Схема учебного стенда: PySpark driver на хост-машине подключается к Spark, Hive Metastore и HDFS в контейнерах Docker; Airflow и Metabase работают рядом">
   <style>
     .lbl  { font: 700 12.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; letter-spacing: 1.6px; }
     .ttl  { font: 600 15.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #0f2d69; }
     .ttlh { font: 600 15.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #c0272d; }
+    .env  { font: 700 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #ffffff; letter-spacing: .3px; }
     .sub  { font: 400 11.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #5b657a; }
     .wire { font: 600 11.5px "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace; fill: #2b4a8b; }
     .edge  { fill: none; stroke: #2b4a8b; stroke-width: 2; }
@@ -21,31 +22,37 @@
 
   <!-- ====================== ПАНЕЛИ (нижний слой) ======================== -->
   <text class="lbl" x="18"  y="46" fill="#c0272d">ХОСТ-МАШИНА СТУДЕНТА</text>
-  <rect x="16" y="58" width="200" height="388" rx="12" fill="#fff8f8" stroke="#c0272d" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <rect x="16" y="58" width="200" height="412" rx="12" fill="#fff8f8" stroke="#c0272d" stroke-width="1.8" stroke-dasharray="7 5"/>
 
   <text class="lbl" x="432" y="46" fill="#0f2d69">DOCKER COMPOSE · СЕТЬ 172.28.0.0/24</text>
-  <rect x="430" y="58" width="634" height="388" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <rect x="430" y="58" width="634" height="412" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
 
   <!-- ====================== БЛОКИ НА ХОСТЕ ============================== -->
-  <rect x="30" y="96"  width="172" height="54" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
-  <rect x="30" y="97"  width="4"   height="52" rx="2" fill="#c0272d"/>
-  <text class="ttlh" x="48" y="120">JupyterLab</text>
-  <text class="sub"  x="48" y="137">браузер :8888</text>
+  <!-- conda-окружение: рамка с залитым заголовком вокруг всего, что в нём запускается -->
+  <rect x="24" y="66" width="184" height="318" rx="8" fill="#fcebec" stroke="#c0272d" stroke-width="1.6"/>
+  <path d="M24 94 V74 Q24 66 32 66 H200 Q208 66 208 74 V94 Z" fill="#c0272d"/>
+  <text class="env" x="116" y="85" text-anchor="middle">conda: spark-course</text>
 
-  <rect x="30" y="176" width="172" height="74" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
-  <rect x="30" y="177" width="4"   height="72" rx="2" fill="#c0272d"/>
-  <text class="ttlh" x="48" y="202">PySpark driver</text>
-  <text class="sub"  x="48" y="221">host/spark_session.py</text>
-  <text class="sub"  x="48" y="238">Spark UI :4040</text>
+  <rect x="30" y="104" width="172" height="54" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="105" width="4"   height="52" rx="2" fill="#c0272d"/>
+  <text class="ttlh" x="48" y="128">JupyterLab</text>
+  <text class="sub"  x="48" y="145">браузер :8888</text>
 
-  <rect x="30" y="276" width="172" height="54" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
-  <rect x="30" y="277" width="4"   height="52" rx="2" fill="#c0272d"/>
-  <text class="ttlh" x="48" y="300">smoke_test.py</text>
-  <text class="sub"  x="48" y="317">проверка стенда</text>
+  <rect x="30" y="184" width="172" height="74" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="185" width="4"   height="72" rx="2" fill="#c0272d"/>
+  <text class="ttlh" x="48" y="210">PySpark driver</text>
+  <text class="sub"  x="48" y="229">host/spark_session.py</text>
+  <text class="sub"  x="48" y="246">Spark UI :4040</text>
 
-  <text class="sub" x="32" y="376">conda env: Python 3.11</text>
-  <text class="sub" x="32" y="396">pyspark 3.5.8 · Java 17</text>
-  <text class="sub" x="32" y="416">winutils (только Windows)</text>
+  <rect x="30" y="284" width="172" height="54" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="285" width="4"   height="52" rx="2" fill="#c0272d"/>
+  <text class="ttlh" x="48" y="308">smoke_test.py</text>
+  <text class="sub"  x="48" y="325">проверка стенда</text>
+
+  <text class="sub" x="116" y="364" text-anchor="middle">Python 3.11 · Java 17</text>
+  <text class="sub" x="116" y="378" text-anchor="middle">pyspark 3.5.8</text>
+
+  <text class="sub" x="32" y="412">winutils (только Windows)</text>
 
   <!-- ====================== БЛОКИ В DOCKER ============================== -->
   <rect x="452" y="117" width="205" height="58" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
@@ -65,28 +72,34 @@
 
   <rect x="452" y="220" width="205" height="58" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
   <rect x="452" y="221" width="4"   height="56" rx="2" fill="#0f2d69"/>
-  <text class="ttl" x="470" y="246">hive-metastore</text>
-  <text class="sub" x="470" y="265">каталог Iceberg · :9083</text>
+  <text class="ttl" x="470" y="246">namenode</text>
+  <text class="sub" x="470" y="265">hdfs :9000 · UI :9870</text>
 
   <rect x="747" y="220" width="295" height="58" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
   <rect x="747" y="221" width="4"   height="56" rx="2" fill="#0f2d69"/>
-  <text class="ttl" x="765" y="246">postgres</text>
-  <text class="sub" x="765" y="265">metastore · airflow · dwh · :5433</text>
+  <text class="ttl" x="765" y="246">datanode</text>
+  <text class="sub" x="765" y="265">данные :9866 · UI :9864</text>
 
   <rect x="452" y="296" width="205" height="58" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
   <rect x="452" y="297" width="4"   height="56" rx="2" fill="#0f2d69"/>
-  <text class="ttl" x="470" y="322">namenode</text>
-  <text class="sub" x="470" y="341">hdfs :9000 · UI :9870</text>
+  <text class="ttl" x="470" y="322">hive-metastore</text>
+  <text class="sub" x="470" y="341">каталог Iceberg · :9083</text>
 
   <rect x="747" y="296" width="295" height="58" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
   <rect x="747" y="297" width="4"   height="56" rx="2" fill="#0f2d69"/>
-  <text class="ttl" x="765" y="322">datanode</text>
-  <text class="sub" x="765" y="341">данные :9866 · UI :9864</text>
+  <text class="ttl" x="765" y="322">postgres</text>
+  <text class="sub" x="765" y="341">metastore · airflow · dwh · :5433</text>
 
-  <rect x="452" y="372" width="590" height="58" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
-  <rect x="452" y="373" width="4"   height="56" rx="2" fill="#0f2d69"/>
-  <text class="ttl" x="470" y="398">airflow-webserver + airflow-scheduler</text>
-  <text class="sub" x="470" y="417">UI :8080 · LocalExecutor · spark-submit → spark-master</text>
+  <rect x="452" y="384" width="205" height="74" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="452" y="385" width="4"   height="72" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="470" y="410">airflow</text>
+  <text class="sub" x="470" y="429">webserver + scheduler · :8080</text>
+  <text class="sub" x="470" y="446">spark-submit → spark-master</text>
+
+  <rect x="747" y="384" width="295" height="58" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="747" y="385" width="4"   height="56" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="765" y="410">metabase</text>
+  <text class="sub" x="765" y="429">графики по витрине dwh · UI :3000</text>
 
   <!-- ====================== СВЯЗИ (верхний слой) ======================== -->
   <path class="inner" d="M657 146 H671"/>
@@ -95,17 +108,20 @@
   <path class="inner" d="M671 173 H741" marker-end="url(#b)"/>
 
   <path class="inner" d="M661 249 H741" marker-end="url(#b)"/>
-  <text class="sub" x="701" y="241" text-anchor="middle">схема</text>
+  <text class="sub" x="701" y="241" text-anchor="middle">блоки</text>
 
   <path class="inner" d="M661 325 H741" marker-end="url(#b)"/>
-  <text class="sub" x="701" y="317" text-anchor="middle">блоки</text>
+  <text class="sub" x="701" y="317" text-anchor="middle">схема</text>
 
-  <path class="edge" d="M202 213 H258"/>
+  <path class="inner" d="M894 382 V360" marker-end="url(#b)"/>
+  <text class="sub" x="902" y="375">dwh</text>
+
+  <path class="edge" d="M202 221 H258"/>
   <path class="edge" d="M258 146 V325"/>
   <path class="edge" d="M258 146 H446" marker-end="url(#a)"/>
   <path class="edge" d="M258 249 H446" marker-end="url(#a)"/>
   <path class="edge" d="M258 325 H446" marker-end="url(#a)"/>
   <text class="wire" x="262" y="136">spark://localhost:7077</text>
-  <text class="wire" x="262" y="239">thrift://localhost:9083</text>
-  <text class="wire" x="262" y="315">hdfs://localhost:9000</text>
+  <text class="wire" x="262" y="239">hdfs://localhost:9000</text>
+  <text class="wire" x="262" y="315">thrift://localhost:9083</text>
 </svg>
