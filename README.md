@@ -330,6 +330,34 @@ docker compose exec postgres psql -U course -p 5433 -d postgres -c "DROP DATABAS
 docker compose up -d metabase
 ```
 
+## 7. Данные курса: розничная сеть
+
+Практика занятий 2–3 строится на синтетических данных сети магазинов. Кассы каждый час
+присылают CSV с продажами, отменами и возвратами. Поля, типы операций, дефекты источника
+и формулы метрик описаны в [docs/retail-data.md](docs/retail-data.md).
+
+```bash
+conda activate spark-course
+python generator/generate_retail.py        # 3 дня, 72 файла по ~20–90 МБ, всего ~3 ГБ, 1–2 минуты
+python generator/generate_retail.py --scale 0.1   # то же в 10 раз меньше — для слабых машин
+```
+
+Дальше в Airflow:
+
+1. `retail_dims` → **Trigger DAG**: справочники в `iceberg.retail.stores`, `categories`, `products`.
+2. `retail_sales_bronze` → включить: Airflow по одному загрузит все 72 часа в
+   `iceberg.retail.sales_bronze`, это около 30 минут.
+3. Silver (`iceberg.retail.sales_silver`) студенты собирают в
+   [notebooks/lab-02-bronze-silver.ipynb](notebooks/lab-02-bronze-silver.ipynb), витрины в Postgres —
+   в [notebooks/lab-03-analytics.ipynb](notebooks/lab-03-analytics.ipynb). Пример витрины в DAG —
+   `retail_mart_daily_revenue`.
+
+| занятие | слайды | ноутбук |
+|---|---|---|
+| 1. Стенд | [slides/01-intro](slides/01-intro/slides.md) | [notebooks/demo.ipynb](notebooks/demo.ipynb) |
+| 2. Загрузка: bronze и silver | [slides/02-ingest](slides/02-ingest/slides.md) | [lab-02-bronze-silver.ipynb](notebooks/lab-02-bronze-silver.ipynb) |
+| 3. Аналитика и витрины | [slides/03-analytics](slides/03-analytics/slides.md) | [lab-03-analytics.ipynb](notebooks/lab-03-analytics.ipynb) |
+
 ## Остановка и сброс
 
 ```bash
@@ -450,8 +478,15 @@ iceberg-course-infra/
 │   ├── install_winutils.ps1      # winutils.exe + hadoop.dll + HADOOP_HOME (только Windows)
 │   ├── spark_session.py          # get_spark(): SparkSession к кластеру в Docker
 │   └── smoke_test.py             # проверка стенда с хоста
-├── dags/spark_iceberg_smoke.py   # проверочный DAG
+├── dags/
+│   ├── spark_iceberg_smoke.py    # проверочный DAG
+│   └── retail_*.py               # справочники, почасовая загрузка bronze, пример витрины
 ├── jobs/                         # PySpark-скрипты (/opt/jobs в Spark и Airflow)
+│   └── retail/                   # скрипты для DAG'ов retail_*
+├── generator/generate_retail.py  # генератор данных розничной сети
+├── docs/retail-data.md           # описание данных курса
+├── notebooks/                    # demo и ноутбуки занятий (с пропусками для студентов)
+├── slides/                       # слайды занятий (Marp)
 ├── data/                         # сырые файлы (/data в namenode, /opt/data в Spark и Airflow)
 └── logs/                         # логи Airflow
 ```
