@@ -218,8 +218,8 @@ spark.stop()
 ## Шаг 0. Скачать репозиторий
 
 1. Запустить программу `Git Bash` через меню «Пуск»
-2. Перейдите на свободный диск `D:`
-3. Загрузите репозиторий `git clone git@github.com:konstgav/spark-course-hse.git`
+2. Перейдите на свободный диск `D:` командой `cd d:/`
+3. Загрузите репозиторий `git clone https://github.com/konstgav/spark-course-hse.git`
 
 ---
 <!-- _class: practice -->
