@@ -354,6 +354,7 @@ docker compose down -v --remove-orphans     # полный сброс: HDFS, Pos
 | hive-metastore перезапускается | `docker compose logs hive-metastore`; обычно помогает полный сброс (выше) |
 | `failed to compute cache key: failed to send write: ... desktop-containerd` при `up --build` | кончилось место в виртуальном диске Docker Desktop (ниже) |
 | `Error 28 No space left on device` при `pip install` | кончилось место на диске с conda-окружением: п. 1.1, восстановление — ниже |
+| Windows: окно про `rdclientax.dll` при старте Docker Desktop | падает WSLg, отключите его в `.wslconfig` (ниже) |
 
 ### Windows: место на диске `C:` уже кончилось
 
@@ -396,6 +397,25 @@ setx TEMP D:\conda\tmp
 ```powershell
 setx WPP_CLIENT_MSG_PORT 8990
 ```
+
+### Windows: «Не удалось загрузить управляющий элемент ActiveX удаленных служб рабочих столов (rdclientax.dll)»
+
+Окно появляется при запуске Docker Desktop, его показывает `msrdc.exe` — клиент WSLg
+(графическая подсистема WSL2). Стенду WSLg не нужен, отключите его: создайте файл
+`%USERPROFILE%\.wslconfig` с содержимым
+
+```ini
+[wsl2]
+guiApplications=false
+```
+
+Перезапустить WSL в powershell:
+
+```powershell
+wsl --shutdown
+```
+
+Затем запустите Docker Desktop заново.
 
 ### Если контейнер hive-metastore не запускается
 
