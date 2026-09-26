@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="262" viewBox="0 0 1080 262" role="img"
+     aria-label="Hive Metastore хранит для таблицы Iceberg только указатель metadata_location на текущий metadata.json в HDFS; metadata.json ссылается на manifest list снапшота, тот — на манифесты, манифесты — на parquet-файлы с данными. Коммит переставляет указатель со старой версии metadata.json на новую">
+  <style>
+    .lbl  { font: 700 12.5px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; letter-spacing: 1.6px; }
+    .ttl  { font: 600 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #0f2d69; }
+    .ttlh { font: 600 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #c0272d; }
+    .ttlg { font: 600 14px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #8a93a6; }
+    .sub  { font: 400 12px "Segoe UI","PT Sans","Noto Sans",Arial,sans-serif; fill: #5b657a; }
+    .wire { font: 600 12px "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace; fill: #2b4a8b; }
+    .wirh { font: 600 12px "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace; fill: #c0272d; }
+    .edge { fill: none; stroke: #2b4a8b; stroke-width: 2; }
+    .old  { fill: none; stroke: #a9b1c2; stroke-width: 1.6; stroke-dasharray: 5 4; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#2b4a8b"/>
+    </marker>
+    <marker id="g" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 4 L0 8 z" fill="#a9b1c2"/>
+    </marker>
+  </defs>
+
+  <!-- ================= каталог ================= -->
+  <text class="lbl" x="18" y="34" fill="#c0272d">КАТАЛОГ · HIVE METASTORE</text>
+  <rect x="16" y="46" width="236" height="204" rx="12" fill="#fff8f8" stroke="#c0272d" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <rect x="30" y="62" width="208" height="174" rx="8" fill="#ffffff" stroke="#e8a9af" stroke-width="1.4"/>
+  <rect x="30" y="63" width="4" height="172" rx="2" fill="#c0272d"/>
+  <text class="ttlh" x="46" y="86">retail.sales</text>
+  <text class="sub"  x="46" y="104">строка в базе metastore</text>
+  <text class="sub"  x="46" y="119">(Postgres) — и больше ничего</text>
+  <text class="wire" x="46" y="150">table_type</text>
+  <text class="wire" x="46" y="166">  = ICEBERG</text>
+  <text class="wirh" x="46" y="198">metadata_location</text>
+  <text class="wirh" x="46" y="214">  = …/00003.metadata.json</text>
+
+  <!-- ================= HDFS ================= -->
+  <text class="lbl" x="282" y="34" fill="#0f2d69">HDFS · /warehouse/retail.db/sales/</text>
+  <rect x="280" y="46" width="784" height="204" rx="12" fill="#f7faff" stroke="#0f2d69" stroke-width="1.8" stroke-dasharray="7 5"/>
+  <text class="wire" x="720" y="80" text-anchor="middle">metadata/</text>
+  <path d="M545 90 H905" stroke="#9dbde8" stroke-width="1.4"/>
+  <text class="wire" x="991" y="80" text-anchor="middle">data/</text>
+  <path d="M932 90 H1050" stroke="#9dbde8" stroke-width="1.4"/>
+
+  <!-- metadata.json: старая и текущая версии -->
+  <rect x="300" y="58" width="214" height="50" rx="8" fill="#f3f5f9" stroke="#c9cfdb" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <text class="ttlg" x="316" y="80">00002.metadata.json</text>
+  <text class="sub"  x="316" y="97" fill="#8a93a6">прошлый коммит: снапшоты s1, s2</text>
+
+  <rect x="300" y="126" width="214" height="110" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="300" y="127" width="4" height="108" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="316" y="150">00003.metadata.json</text>
+  <text class="sub" x="316" y="170">схема, партиционирование</text>
+  <text class="sub" x="316" y="187">все снапшоты: s1, s2, s3</text>
+  <text class="sub" x="316" y="204">текущий снапшот: s3</text>
+  <text class="sub" x="316" y="221">свойства таблицы</text>
+
+  <!-- manifest list -->
+  <rect x="545" y="126" width="160" height="110" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="545" y="127" width="4" height="108" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="561" y="150">snap-s3.avro</text>
+  <text class="sub" x="561" y="170">manifest list:</text>
+  <text class="sub" x="561" y="187">из каких манифестов</text>
+  <text class="sub" x="561" y="204">состоит снапшот s3</text>
+
+  <!-- манифесты -->
+  <rect x="735" y="126" width="170" height="50" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="735" y="127" width="4" height="48" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="751" y="147">m1.avro</text>
+  <text class="sub" x="751" y="164">файлы и их min/max</text>
+  <rect x="735" y="186" width="170" height="50" rx="8" fill="#ffffff" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="735" y="187" width="4" height="48" rx="2" fill="#0f2d69"/>
+  <text class="ttl" x="751" y="207">m2.avro</text>
+  <text class="sub" x="751" y="224">файлы и их min/max</text>
+
+  <!-- данные -->
+  <rect x="932" y="126" width="118" height="32" rx="6" fill="#eaf2fc" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="932" y="165" width="118" height="32" rx="6" fill="#eaf2fc" stroke="#9dbde8" stroke-width="1.4"/>
+  <rect x="932" y="204" width="118" height="32" rx="6" fill="#eaf2fc" stroke="#9dbde8" stroke-width="1.4"/>
+  <text class="wire" x="991" y="146" text-anchor="middle">a.parquet</text>
+  <text class="wire" x="991" y="185" text-anchor="middle">b.parquet</text>
+  <text class="wire" x="991" y="224" text-anchor="middle">c.parquet</text>
+
+  <!-- ================= стрелки ================= -->
+  <path class="old"  d="M238 112 C262 112 270 83 296 83" marker-end="url(#g)"/>
+  <path class="edge" d="M238 206 C266 206 270 181 296 181" marker-end="url(#a)"/>
+
+  <path class="edge" d="M514 181 H541" marker-end="url(#a)"/>
+  <path class="edge" d="M705 170 C718 170 718 151 731 151" marker-end="url(#a)"/>
+  <path class="edge" d="M705 192 C718 192 718 211 731 211" marker-end="url(#a)"/>
+  <path class="edge" d="M905 146 C915 146 915 142 928 142" marker-end="url(#a)"/>
+  <path class="edge" d="M905 156 C917 156 915 181 928 181" marker-end="url(#a)"/>
+  <path class="edge" d="M905 211 C917 211 915 220 928 220" marker-end="url(#a)"/>
+</svg>
