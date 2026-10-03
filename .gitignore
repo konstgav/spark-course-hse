@@ -65,6 +65,11 @@ data/*
 # выборка для занятия 1 (generator/make_sample.py) хранится в git
 !data/sample/
 
+# Рабочие копии ноутбуков студентов: копируйте сюда notebooks/*.ipynb и правьте копии,
+# тогда git pull не конфликтует. Каталог на одном уровне с notebooks/, путь ../host работает
+work/*
+!work/.gitkeep
+
 # Локальные переопределения переменных (.env с дефолтами курса хранится в git)
 .env.local
 docker-compose.override.yml

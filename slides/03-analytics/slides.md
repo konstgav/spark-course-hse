@@ -161,7 +161,7 @@ with DAG(dag_id="retail_mart_daily_revenue", schedule=None, ...) as dag:
 
 1. Убедиться, что DAG `retail_sales_bronze` загрузил все 72 часа, и обновить silver
    (раздел 3 ноутбука занятия 2)
-2. Открыть `notebooks/lab-03-analytics.ipynb`
+2. `git pull`, `cp notebooks/lab-03-analytics.ipynb work/` и открыть `work/lab-03-analytics.ipynb`
 3. Выполнить пример: запрос → `mart_daily_revenue` в Postgres
 4. Открыть `jobs/retail/mart_daily_revenue.py` и `dags/retail_mart_daily_revenue.py`,
    найти в них тот же запрос
