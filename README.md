@@ -385,7 +385,7 @@ docker compose up -d metabase
 
 Практика всех занятий строится на синтетических данных сети магазинов. Кассы каждый час
 присылают CSV с продажами, отменами и возвратами. На занятии 1 — готовая выборка за один день
-(`data/sample/`, хранится в git), на занятиях 2–3 — полный набор из генератора. Поля, типы операций, дефекты источника
+(`data/sample/`, хранится в git), на занятиях 2–4 — полный набор из генератора. Поля, типы операций, дефекты источника
 и формулы метрик описаны в [docs/retail-data.md](docs/retail-data.md).
 
 ```bash
@@ -403,12 +403,19 @@ python generator/generate_retail.py --scale 0.1   # то же в 10 раз ме�
    [notebooks/lab-02-bronze-silver.ipynb](notebooks/lab-02-bronze-silver.ipynb), витрины в Postgres —
    в [notebooks/lab-03-analytics.ipynb](notebooks/lab-03-analytics.ipynb). Пример витрины в DAG —
    `retail_mart_daily_revenue`.
+4. Модели машинного обучения студенты обучают в
+   [notebooks/lab-04-ml.ipynb](notebooks/lab-04-ml.ipynb): регрессию в sklearn и классификацию
+   в Spark ML. Сегментацию магазинов (k-means) переобучает по понедельникам DAG
+   `retail_ml_store_segments`. Он сохраняет модель в HDFS (`/models/store_segments/<дата>`) и пишет
+   сегменты в `dwh.public.ml_store_segments`, `ml_segment_profile` и журнал `ml_runs`, по
+   которым строится дашборд в Metabase.
 
 | занятие | цель | слайды | ноутбук |
 |---|---|---|---|
 | 1. Стенд и Spark DataFrame API | развернуть стенд; освоить операции над DataFrame, ленивые вычисления, план запроса, партиции и стадии | [slides/01-intro](slides/01-intro/slides.md) | [lab-01-spark.ipynb](notebooks/lab-01-spark.ipynb) |
 | 2. Загрузка: bronze и silver | почасовая загрузка CSV через Airflow, очистка и `MERGE INTO` в Iceberg | [slides/02-ingest](slides/02-ingest/slides.md) | [lab-02-bronze-silver.ipynb](notebooks/lab-02-bronze-silver.ipynb) |
 | 3. Аналитика и витрины | витрины в Postgres, DAG для витрины, дашборд в Metabase | [slides/03-analytics](slides/03-analytics/slides.md) | [lab-03-analytics.ipynb](notebooks/lab-03-analytics.ipynb) |
+| 4. Машинное обучение | регрессия в sklearn, классификация в Spark ML, еженедельная кластеризация магазинов в Airflow, сегменты в Metabase | [slides/04-ml](slides/04-ml/slides.md) | [lab-04-ml.ipynb](notebooks/lab-04-ml.ipynb) |
 
 ## Остановка и сброс
 
@@ -532,12 +539,13 @@ iceberg-course-infra/
 │   └── smoke_test.py             # проверка стенда с хоста
 ├── dags/
 │   ├── spark_iceberg_smoke.py    # проверочный DAG
-│   └── retail_*.py               # справочники, почасовая загрузка bronze, пример витрины
+│   └── retail_*.py               # справочники, почасовая загрузка bronze, пример витрины,
+│                                 # еженедельное обучение модели сегментации магазинов
 ├── jobs/                         # PySpark-скрипты (/opt/jobs в Spark и Airflow)
-│   └── retail/                   # скрипты для DAG'ов retail_*
+│   └── retail/                   # скрипты для DAG'ов retail_* (ml_store_segments.py — k-means)
 ├── generator/                    # генератор данных розничной сети и выборки для занятия 1
 ├── docs/retail-data.md           # описание данных курса
-├── notebooks/                    # ноутбуки занятий lab-01..03 (с пропусками для студентов)
+├── notebooks/                    # ноутбуки занятий lab-01..04 (с пропусками для студентов)
 ├── work/                         # ваши копии ноутбуков (не в git, см. п. 4)
 ├── slides/                       # слайды занятий (Marp)
 ├── data/                         # сырые файлы (/data в namenode, /opt/data в Spark и Airflow)

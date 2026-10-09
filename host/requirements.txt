@@ -7,4 +7,5 @@ pandas<2.3
 pyarrow>=11,<19
 catboost==1.2.10
 scikit-learn
+matplotlib
 psycopg2-binary

@@ -171,6 +171,16 @@ iceberg.retail.sales_silver      без дублей и битых строк, �
 Postgres dwh.public.mart_*  ──▶  Metabase
 ```
 
+Занятие 4 строит на silver модели машинного обучения. Сегментацию магазинов раз в неделю
+переобучает DAG `retail_ml_store_segments` (скрипт `jobs/retail/ml_store_segments.py`):
+
+| куда | что |
+|---|---|
+| HDFS `/models/store_segments/<дата>` | модель Spark ML (`PipelineModel`), по версии на неделю |
+| `dwh.public.ml_store_segments` | магазин, его признаки и номер сегмента |
+| `dwh.public.ml_segment_profile` | средние признаки и состав по форматам для каждого сегмента |
+| `dwh.public.ml_runs` | журнал запусков: дата модели, k, silhouette (дописывается) |
+
 Справочники загружает DAG `retail_dims` в таблицы `iceberg.retail.stores`, `categories`
 и `products`.
 
