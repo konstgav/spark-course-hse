@@ -38,7 +38,7 @@ Docker Compose для практики: HDFS, Hive Metastore (каталог Ice
 | hive-metastore | каталог Iceberg | `thrift://hive-metastore:9083` |
 | postgres | базы `airflow`, `metastore`, `dwh` | `localhost:5433`, `course` / `course_pass` |
 | airflow-webserver / -scheduler | Airflow 2.10 (LocalExecutor) | http://localhost:8080, `admin` / `admin` |
-| metabase | графики и дашборды по витрине `dwh` | http://localhost:3000 |
+| metabase | графики и дашборды по витрине `dwh` | http://localhost:3000, `student@example.com` / `course_pass1` |
 | Spark UI приложения | поднимается driver'ом на хосте | http://localhost:4040 |
 
 Версии и пароли задаются в [.env](.env), версии jar-пакетов — в
@@ -351,8 +351,18 @@ driver'а, jar-пакеты, каталог `iceberg`, HDFS и ресурсы. �
 
 ## 6. Metabase: графики по витрине
 
-http://localhost:3000. Первый вход просит завести администратора — почта и пароль любые,
-установка локальная и наружу не смотрит.
+http://localhost:3000. Первый вход просит завести администратора. Чтобы не вспоминать
+пароль на следующих занятиях, у всех одна учётная запись:
+
+| Поле | Значение |
+|---|---|
+| Email | `student@example.com` |
+| Password | `course_pass1` |
+
+Почта не настоящая: Metabase проверяет только формат адреса и писем не отправляет.
+Поэтому восстановить пароль через «Forgot password» нельзя — не меняйте его. Если всё же
+забыли, сбросьте Metabase (в конце раздела) и заведите учётную запись заново. Установка
+локальная и наружу не смотрит, поэтому пароль в документации ничем не грозит.
 
 Дальше один раз подключается витрина: **Add database** → **PostgreSQL**.
 

@@ -171,44 +171,59 @@ with DAG(dag_id="retail_mart_daily_revenue", schedule=None, ...) as dag:
 
 <!-- _class: practice -->
 
-## Шаг 2. Три витрины
+## Шаг 2. Задача 1: средний чек
 
-| задача | витрина | о чём вопрос |
-|---|---|---|
-| 1 | `mart_avg_check` | средний чек по регионам и форматам, участники программы и остальные |
-| 2 | `mart_top_products` | топ-5 товаров по выручке в каждой категории |
-| 3 | `mart_payment_mix` | доли способов оплаты в выручке каждого региона |
+Витрина `mart_avg_check`: средний чек по регионам и форматам магазинов, участники программы и остальные.
 
-Колонки каждой витрины и подсказки — в ноутбуке. Результат записывайте в Postgres
-функцией `write_to_dwh(df, "имя_витрины")`.
+1. Сначала собрать чеки: `GROUP BY receipt_id`, потом усреднить суммы чеков по группам
+2. Регион и формат — из `iceberg.retail.stores`
+3. Записать в Postgres: `write_to_dwh(avg_check, "mart_avg_check")`
+
+Колонки витрины и подсказки — в ноутбуке.
 
 ---
 
 <!-- _class: practice -->
 
-## Шаг 3. Своя витрина в DAG
+## Шаг 3. Задача 2: своя витрина в DAG
 
 1. Скопировать `jobs/retail/mart_daily_revenue.py` → `jobs/retail/mart_avg_check.py`,
    вставить свой запрос, `dbtable="public.mart_avg_check"`
 2. Скопировать `dags/retail_mart_daily_revenue.py` → `dags/retail_mart_avg_check.py`,
    поменять `dag_id`, `application`, `name`
-3. Через ~30 секунд DAG появится в Airflow → включить → **Trigger DAG**
+3. `spark.stop()` в ноутбуке. Через ~30 секунд DAG появится в Airflow → включить → **Trigger DAG**
 4. Упало — **Logs** задачи, ошибка Spark в конце лога
 
 ---
 
 <!-- _class: practice -->
 
-## Шаг 4. Дашборд в Metabase
+## Шаг 4. Задача 3: дашборд в Metabase
 
 1. http://localhost:3000. База `dwh` не подключена — README стенда, раздел «Metabase»
 2. Новых таблиц не видно — ⚙ **Admin → Databases → dwh → Sync database schema**:
    сам Metabase перечитывает схему только раз в час
 3. **New → Question** → `Mart Daily Revenue` → Summarize: сумма `Revenue Rub`
    по `Event Date: Day` и `Region` → **Line**
-4. Второй вопрос по своей витрине: например, `Mart Avg Check` → **Bar**
+4. Второй вопрос по своей витрине: `Mart Avg Check` → **Bar**
 5. **New → Dashboard** «Розничная сеть» → добавить оба вопроса
 6. Запустить DAG витрины ещё раз и обновить дашборд
+
+---
+
+<!-- _class: practice -->
+
+## Шаг 5. Задачи повышенной сложности
+
+На дополнительный балл — после того, как готовы задачи 1–3:
+
+| задача | витрина | о чём вопрос |
+|---|---|---|
+| 4* | `mart_top_products` | топ-5 товаров по выручке в каждой категории |
+| 5* | `mart_payment_mix` | доли способов оплаты в выручке каждого региона |
+
+Обе — на **оконные функции**. Сессию Spark открыть заново (ячейка в ноутбуке), готовые
+витрины добавить на дашборд «Розничная сеть».
 
 ---
 
