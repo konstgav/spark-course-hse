@@ -310,3 +310,15 @@ with DAG(dag_id="retail_ml_store_segments",
 4. `conda init --reverse powershell cmd.exe`, вернуть `TEMP`/`TMP`, удалить `PIP_CACHE_DIR`, `HADOOP_HOME`
 5. Удалить с `D:` Miniconda, `temp`, `pip-cache`, `hadoop`, `DockerData` и репозиторий
 6. Убрать строку курса из hosts-файла
+
+---
+
+<!-- _class: lead -->
+
+![bg right:40% 75%](img/feedback-qr.svg)
+
+# Спасибо! Оцените курс
+
+## Анонимная анкета, 3 минуты: по ответам решаем, будет ли продолжение
+
+**https://forms.gle/WT5whJp4HncRg8tTA**
