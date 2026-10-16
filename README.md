@@ -435,6 +435,85 @@ docker compose down                         # удалить контейнер�
 docker compose down -v --remove-orphans     # полный сброс: HDFS, Postgres, кеш Ivy Airflow
 ```
 
+## Уборка компьютера после курса
+
+Компьютеры в классе общие. После последнего занятия верните машину в исходное состояние:
+стенд занимает на `D:` около 25 ГБ. Кроме того, курс менял переменные среды и профиль
+терминала. Если удалить только папки, у следующего пользователя будут ломаться программы
+и `cmd`: `TEMP` будет указывать на несуществующую папку, а `cmd` при запуске будет
+вызывать удалённую conda.
+
+Шаги выполняются **по порядку** в PowerShell. Пути ниже — те, что предлагались в п. 1;
+если вы ставили в другие места, подставьте свои.
+
+**1. Сохраните свою работу.** Скопируйте `work/` (и свои DAG'и и скрипты, если вы их
+писали) на флешку, в облако или в свой репозиторий. После шага 6 их не будет.
+
+**2. Остановите JupyterLab** (Ctrl+C в его терминале) и закройте ноутбуки.
+
+**3. Удалите стенд вместе с данными и образами.** Выполните в корне репозитория:
+
+```powershell
+docker compose down -v --remove-orphans --rmi all   # контейнеры, volume'ы HDFS/Postgres, образы стенда
+docker builder prune -a -f                          # кэш сборки образов
+```
+
+**4. Верните Docker Desktop в исходное состояние.**
+1. Docker Desktop → значок **Troubleshoot** (жучок) → **Clean / Purge data** → отметьте
+   **WSL 2** → **Delete**. Виртуальный диск Docker очистится.
+2. Settings → Resources → Advanced → **Disk image location**: верните путь по умолчанию
+   (`C:\Users\<вы>\AppData\Local\Docker\wsl`) → Apply & restart. Диск после очистки
+   почти пустой, поэтому перенос займёт несколько секунд.
+3. Закройте Docker Desktop: значок в трее → **Quit Docker Desktop**. Затем выполните
+   `wsl --shutdown`.
+
+**5. Отмените изменения conda и переменных среды.** Порядок важен: `conda init --reverse`
+нужно выполнить, пока conda ещё установлена.
+
+```powershell
+conda init --reverse powershell cmd.exe     # убирает автозапуск conda из профиля PowerShell и cmd
+
+# TEMP/TMP — обратно в профиль пользователя, остальные переменные курса — удалить
+[Environment]::SetEnvironmentVariable("TEMP", "$env:USERPROFILE\AppData\Local\Temp", "User")
+[Environment]::SetEnvironmentVariable("TMP",  "$env:USERPROFILE\AppData\Local\Temp", "User")
+[Environment]::SetEnvironmentVariable("PIP_CACHE_DIR", $null, "User")
+[Environment]::SetEnvironmentVariable("HADOOP_HOME", $null, "User")
+# убрать winutils (...\hadoop\bin) из пользовательского PATH
+$path = [Environment]::GetEnvironmentVariable("Path", "User") -split ';' |
+    Where-Object { $_ -and $_ -notlike '*\hadoop\bin' }
+[Environment]::SetEnvironmentVariable("Path", ($path -join ';'), "User")
+```
+
+**Закройте все терминалы** (включая окна VS Code и Anaconda Prompt): они держат файлы
+conda и `D:\temp`.
+
+**6. Очистите диск `D:`.** Откройте **новое** окно PowerShell:
+
+```powershell
+cd $env:USERPROFILE
+D:\miniconda3\Uninstall-Miniconda3.exe /S        # деинсталлятор Miniconda, работает ~1 минуту
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue `
+    D:\miniconda3, D:\conda, D:\temp, D:\pip-cache, D:\hadoop, D:\DockerData, `
+    "$env:USERPROFILE\hadoop", "$env:USERPROFILE\.ivy2*"
+Remove-Item -Recurse -Force D:\iceberg-course-infra   # каталог репозитория: укажите свой путь
+```
+
+Деинсталлятор работает в фоне. Если `D:\miniconda3` не удалилась, подождите минуту
+и повторите `Remove-Item`. Каталог репозитория занимает несколько ГБ: в `data/` лежат
+сгенерированные данные курса.
+
+**7. Уберите строку из hosts-файла.** Откройте Блокнот от имени администратора,
+затем `C:\Windows\System32\drivers\etc\hosts`. Удалите строку
+`127.0.0.1 namenode datanode hive-metastore postgres` (п. 1.2).
+
+**Проверка:** в новом окне PowerShell `echo $env:TEMP` показывает путь в
+`C:\Users\...\AppData\Local\Temp`, а `conda` не находится. На `D:` не осталось папок
+из списка выше.
+
+**Linux / macOS** (свой компьютер): `docker compose down -v --remove-orphans --rmi all`,
+`conda init --reverse` и удаление `~/miniconda3`, если Miniconda ставилась для курса;
+затем удалите строку из `/etc/hosts`.
+
 ## Решение проблем
 
 | Симптом | Причина / решение |

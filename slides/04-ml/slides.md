@@ -295,3 +295,18 @@ with DAG(dag_id="retail_ml_store_segments",
 * Маленький датасет — **sklearn**, большой или для DAG — **Spark ML Pipeline**
 * Модель в продакшене переобучается **по расписанию**, хранит версии и журнал качества
 * Результат модели — таблица в Postgres, её показывает Metabase, как любую витрину
+
+---
+
+<!-- _class: practice -->
+
+## После курса: уберите за собой
+
+Компьютеры в классе общие. Порядок — по README, раздел **«Уборка компьютера после курса»**:
+
+1. Сохраните `work/` на флешку или в облако
+2. `docker compose down -v --remove-orphans --rmi all`
+3. Docker Desktop: **Troubleshoot → Clean / Purge data**, вернуть *Disk image location*, **Quit**
+4. `conda init --reverse powershell cmd.exe`, вернуть `TEMP`/`TMP`, удалить `PIP_CACHE_DIR`, `HADOOP_HOME`
+5. Удалить с `D:` Miniconda, `temp`, `pip-cache`, `hadoop`, `DockerData` и репозиторий
+6. Убрать строку курса из hosts-файла
